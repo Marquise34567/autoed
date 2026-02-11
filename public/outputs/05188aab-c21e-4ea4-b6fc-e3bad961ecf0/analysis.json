@@ -1,0 +1,27 @@
+{
+  "chosenStart": 0.208292,
+  "chosenEnd": 0,
+  "hookStart": 0.208292,
+  "hookEnd": 0,
+  "improvements": [
+    "Retention-first hook",
+    "Aggressive pacing trims",
+    "Removed low-energy sections"
+  ],
+  "retentionPlan": {
+    "hook": {
+      "start": 0.208292,
+      "end": 0,
+      "reason": "Fallback hook (no transcript)"
+    },
+    "segments": [],
+    "stats": {
+      "duration": 0,
+      "keptDuration": 0,
+      "keepRatio": 1,
+      "aggressiveness": "high",
+      "windowSize": 4,
+      "step": 2
+    }
+  }
+}

@@ -1,0 +1,13 @@
+﻿node_modules
+.next
+.env
+.env.local
+dist
+build
+out
+.vercel
+uploads
+renders
+*.mp4
+*.mov
+*.mkv

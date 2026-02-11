@@ -1,0 +1,33 @@
+{
+  "chosenStart": 0.8,
+  "chosenEnd": 3.3,
+  "hookStart": 0.8,
+  "hookEnd": 3.3,
+  "improvements": [
+    "Hook from 0.8s",
+    "Removed 1.0s",
+    "1 high-value segments kept"
+  ],
+  "edl": {
+    "version": 1,
+    "hook": {
+      "start": 0.8,
+      "end": 3.3,
+      "reason": "Auto-rewrite hook from 0.8s"
+    },
+    "segments": [
+      {
+        "start": 3.3,
+        "end": 7.8,
+        "reason": "Post-hook context",
+        "score": 0.6
+      }
+    ],
+    "notes": "Auto-rewrite for meaningful edits (kept 7.0s)",
+    "expectedChange": {
+      "originalDurationSec": 8,
+      "finalDurationSec": 7,
+      "totalRemovedSec": 1
+    }
+  }
+}

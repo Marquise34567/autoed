@@ -1,0 +1,39 @@
+{
+  "chosenStart": 0,
+  "chosenEnd": 2.5,
+  "hookStart": 0,
+  "hookEnd": 2.5,
+  "improvements": [
+    "Hook from 0.0s",
+    "Removed 5.2s",
+    "2 high-value segments kept"
+  ],
+  "edl": {
+    "version": 1,
+    "hook": {
+      "start": 0,
+      "end": 2.5,
+      "reason": "LightTrim hook"
+    },
+    "segments": [
+      {
+        "start": 0,
+        "end": 48.63,
+        "reason": "Kept",
+        "score": 0
+      },
+      {
+        "start": 53.87,
+        "end": 604.479,
+        "reason": "Kept",
+        "score": 0
+      }
+    ],
+    "notes": "Light-trim: applied 1 cuts, removed 5.2s (cap 60.0s)",
+    "expectedChange": {
+      "originalDurationSec": 604.479,
+      "finalDurationSec": 599.239,
+      "totalRemovedSec": 5.240000000000009
+    }
+  }
+}
