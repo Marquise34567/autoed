@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import EditorShell from '@/components/editor-v2/EditorShell'
 import AnalysisCard from '@/components/editor-v2/AnalysisCard'
-import EditorTopBar from '@/components/editor-v2/EditorTopBar'
+import EditorHeader from '@/components/editor-v2/EditorHeader'
+import VideoAnalysisPanel from '@/components/editor-v2/VideoAnalysisPanel'
+import ClipsPanel from '@/components/editor-v2/ClipsPanel'
 import UploadCTA from '@/components/editor-v2/UploadCTA'
 import PipelineStepper from '@/components/editor-v2/PipelineStepper'
 import ProgressPanel from '@/components/editor-v2/ProgressPanel'
@@ -451,68 +453,51 @@ export default function EditorClientV2() {
 
   return (
     <EditorShell>
-      <div className="flex h-full min-h-screen w-full flex-col items-stretch gap-8">
-        <section className="w-full min-w-0">
-          <div className="w-full rounded-3xl bg-linear-to-br from-[#061021]/80 via-[#071018]/70 to-[#031018]/80 p-8 sm:p-10 border border-white/6 ring-1 ring-white/4 shadow-2xl backdrop-blur-md transition-transform duration-300 hover:shadow-[0_30px_60px_rgba(2,6,23,0.9)]">
-            <div className="flex items-start justify-between">
-              <EditorTopBar />
-            </div>
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-7xl rounded-3xl bg-[linear-gradient(180deg,#07090f,#05060a)] p-6 sm:p-8 border border-white/6 shadow-2xl backdrop-blur-md">
+          <EditorHeader status={status} />
+          <div className="h-px bg-white/6 my-3" />
 
-            <div className="flex items-center justify-center mb-6">
-              <input
-                type="file"
-                accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
-                hidden
-                ref={fileInputRef}
-                onChange={handleFileSelected}
-              />
-              <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2">
-              {status === 'idle' && (
-                <div className="text-sm text-white/60">Ready to analyze. Choose a video above to begin.</div>
-              )}
-
-              {status === 'error' && (
-                <ErrorPanel message={errorMessage} onRetry={reset} onCopy={() => {
-                  try { navigator.clipboard?.writeText(JSON.stringify({ jobId, error: errorMessage })) } catch (_) {}
-                }} />
-              )}
-
-              {status === 'done' && (
-                <OutputPanel onOpen={() => setShowPreview(true)} onOpenNewTab={openDownloadInNewTab} />
-              )}
-            </div>
-
-            <div className="mt-6">
-              <PipelineStepper current={status} />
-                <div className="mt-4">
-                <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
-              </div>
-              <div className="mt-6">
-                <AnalysisCard
-                  status={status}
-                  overallProgress={overallProgress}
-                  detectedDurationSec={detectedDurationSec}
-                  overallEtaSec={overallEtaSec}
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:flex-1">
+              <div className="mb-4">
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
+                  hidden
+                  ref={fileInputRef}
+                  onChange={handleFileSelected}
                 />
+                <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
+              </div>
+
+              <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
+
+              <div className="mt-4">
+                <PipelineStepper current={status} />
+                <div className="mt-4">
+                  <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Unified subscription card below editor content */}
-        {userDoc && (
-          <div className="w-full">
-            <div className="w-full rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-6 sm:p-8 backdrop-blur-lg shadow-2xl">
-              <SubscriptionCard user={userDoc} />
+            <div className="md:w-1/2 lg:w-1/3">
+              <ClipsPanel clips={clips} />
             </div>
           </div>
-        )}
-        {popup && (
-          <NotificationPopup title={popup.title} lines={popup.lines} onClose={() => setPopup(null)} />
-        )}
+
+          {userDoc && (
+            <div className="mt-6">
+              <div className="w-full rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-4 sm:p-6 backdrop-blur-lg shadow-2xl">
+                <SubscriptionCard user={userDoc} />
+              </div>
+            </div>
+          )}
+
+          {popup && (
+            <NotificationPopup title={popup.title} lines={popup.lines} onClose={() => setPopup(null)} />
+          )}
+        </div>
       </div>
 
       {/* Preview modal that pops up when download is ready */}
