@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* hide horizontal scrollbars for compact steppers while keeping scroll behavior */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+/* Custom animations for landing page */
+@keyframes floatY {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slowPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.95; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-float { animation: floatY 6s ease-in-out infinite; }
+.animate-fade-up { animation: fadeUp 700ms ease-out both; }
+.animate-pulse-slow { animation: slowPulse 3.5s ease-in-out infinite; }
+
+/* Stagger helpers */
+.fade-delay-1 { animation-delay: 120ms; }
+.fade-delay-2 { animation-delay: 260ms; }
+.fade-delay-3 { animation-delay: 420ms; }
+.fade-delay-4 { animation-delay: 600ms; }
+
+/* CTA subtle hover and focus */
+.cta-animate { transition: transform 180ms ease, box-shadow 180ms ease; }
+.cta-animate:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 10px 30px rgba(255,255,255,0.06); }
+
+/* Card entrance micro animation */
+.card-entrance { transform-origin: center; transition: transform 220ms ease, box-shadow 220ms ease; }
+.card-entrance:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+

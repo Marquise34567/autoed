@@ -1,0 +1,26 @@
+{
+  "chosenStart": 0,
+  "chosenEnd": 0,
+  "hookStart": 0,
+  "hookEnd": 0,
+  "improvements": [
+    "Hook from 0.0s",
+    "Removed 0.0s",
+    "0 high-value segments kept"
+  ],
+  "edl": {
+    "version": 1,
+    "hook": {
+      "start": 0,
+      "end": 0,
+      "reason": "Video too short"
+    },
+    "segments": [],
+    "notes": "Video shorter than 5 seconds, no edits applied",
+    "expectedChange": {
+      "originalDurationSec": 0,
+      "finalDurationSec": 0,
+      "totalRemovedSec": 0
+    }
+  }
+}

@@ -1,0 +1,1 @@
+web: cd autoed-backend-ready && npm start

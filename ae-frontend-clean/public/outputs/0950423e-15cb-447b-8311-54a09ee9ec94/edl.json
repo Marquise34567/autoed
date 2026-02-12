@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "hook": {
+    "start": 1.5015,
+    "end": 4.0015,
+    "reason": "Auto-rewrite hook from 1.5s"
+  },
+  "segments": [
+    {
+      "start": 4.0015,
+      "end": 8.5015,
+      "reason": "Post-hook context",
+      "score": 0.6
+    },
+    {
+      "start": 9.015,
+      "end": 12.515,
+      "reason": "Fallback energetic segment",
+      "score": 0.4
+    }
+  ],
+  "notes": "Auto-rewrite for meaningful edits (kept 10.5s)",
+  "expectedChange": {
+    "originalDurationSec": 15.015,
+    "finalDurationSec": 10.5,
+    "totalRemovedSec": 4.515000000000001
+  }
+}

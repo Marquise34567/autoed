@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "hook": {
+    "start": 0,
+    "end": 2.5,
+    "reason": "LightTrim hook"
+  },
+  "segments": [
+    {
+      "start": 0,
+      "end": 39.88,
+      "reason": "Kept",
+      "score": 0
+    },
+    {
+      "start": 44.88,
+      "end": 48.73,
+      "reason": "Kept",
+      "score": 0
+    },
+    {
+      "start": 53.73,
+      "end": 604.479,
+      "reason": "Kept",
+      "score": 0
+    }
+  ],
+  "notes": "Light-trim: applied 2 cuts, removed 10.0s (cap 60.0s)",
+  "expectedChange": {
+    "originalDurationSec": 604.479,
+    "finalDurationSec": 594.479,
+    "totalRemovedSec": 10
+  }
+}

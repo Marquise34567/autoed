@@ -1,0 +1,33 @@
+{
+  "chosenStart": 0,
+  "chosenEnd": 2.5,
+  "hookStart": 0,
+  "hookEnd": 2.5,
+  "improvements": [
+    "Hook from 0.0s",
+    "Removed 0.0s",
+    "1 high-value segments kept"
+  ],
+  "edl": {
+    "version": 1,
+    "hook": {
+      "start": 0,
+      "end": 2.5,
+      "reason": "First non-silent moment (no transcript)"
+    },
+    "segments": [
+      {
+        "start": 2.5,
+        "end": 143.31,
+        "score": 0.485,
+        "reason": "Acceptable content"
+      }
+    ],
+    "notes": "Extracted hook from 0.0s, kept 1 segments",
+    "expectedChange": {
+      "originalDurationSec": 143.31,
+      "finalDurationSec": 143.31,
+      "totalRemovedSec": 0
+    }
+  }
+}
