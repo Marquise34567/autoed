@@ -20,13 +20,15 @@ import { requirePremium } from '@/lib/subscription'
 import { useRouter } from 'next/navigation'
 import { safeJson } from '@/lib/client/safeJson'
 import { API_BASE } from '@/lib/api'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
+import { safeGetUserDoc } from '@/lib/firebase/safeUserDoc'
 
 type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
 
 export default function EditorClientV2() {
   const { user, authReady } = useAuth()
   const router = useRouter()
+  try { console.log("Navigator online:", navigator.onLine) } catch (_) {}
 
   const [userDoc, setUserDoc] = useState<any | null>(null)
   const [popup, setPopup] = useState<{ title: string; lines: string[] } | null>(null)
@@ -103,15 +105,14 @@ export default function EditorClientV2() {
     try {
       unsub = auth.onAuthStateChanged(async (u)=>{
         if (!u) { setUserDoc(null); return }
-        try {
-          const ref = doc(firestore, 'users', u.uid)
-          const snap = await getDoc(ref)
-          if (snap.exists()) setUserDoc(snap.data())
-          else setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-        } catch (e) {
-          console.warn('failed to load user doc', e)
-          setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-        }
+            try {
+              const userData = await safeGetUserDoc(u.uid)
+              if (userData) setUserDoc(userData)
+              else setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
+            } catch (e) {
+              console.warn('failed to load user doc', e)
+              setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
+            }
       })
     } catch (e) {
       console.warn('auth listener failed', e)

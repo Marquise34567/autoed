@@ -13,7 +13,8 @@ import { UserNav } from '@/components/UserNav'
 import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import { auth, db as firestore } from '@/lib/firebase.client'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc } from 'firebase/firestore'
+import { safeGetUserDoc } from '@/lib/firebase/safeUserDoc'
 import { isPremium } from '@/lib/subscription'
 
 export default function EditorGate() {
@@ -87,10 +88,9 @@ export default function EditorGate() {
 
     const load = async () => {
       try {
-        const ref = doc(firestore, 'users', user.id)
-        const snap = await getDoc(ref)
+        const userData = await safeGetUserDoc(user.id)
         if (!active) return
-        if (snap.exists()) setUserDoc(snap.data())
+        if (userData) setUserDoc(userData)
         else setUserDoc({ uid: user.id, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
       } catch (e) {
         if (active) setUserDoc({ uid: user.id, plan: 'free', rendersLimit: 12, rendersUsed: 0 })

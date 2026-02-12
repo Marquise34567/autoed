@@ -2,4 +2,3 @@
 
 // Bridge file: re-export the canonical client initializer implementation.
 export * from './firebase/client'
-export { default } from './firebase/client'
