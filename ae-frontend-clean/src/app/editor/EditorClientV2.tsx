@@ -453,7 +453,7 @@ export default function EditorClientV2() {
     <EditorShell>
       <div className="flex h-full min-h-screen w-full flex-col items-stretch gap-8">
         <section className="w-full min-w-0">
-          <div className="w-full rounded-3xl bg-linear-to-br from-[#061021]/80 via-[#071018]/70 to-[#031018]/80 p-8 sm:p-10 border border-white/6 ring-1 ring-white/4 shadow-2xl backdrop-blur-md card-entrance animate-fade-up transition-transform duration-300 hover:-translate-y-2 hover:shadow-[0_30px_60px_rgba(2,6,23,0.9)]">
+          <div className="w-full rounded-3xl bg-linear-to-br from-[#061021]/80 via-[#071018]/70 to-[#031018]/80 p-8 sm:p-10 border border-white/6 ring-1 ring-white/4 shadow-2xl backdrop-blur-md transition-transform duration-300 hover:-translate-y-2 hover:shadow-[0_30px_60px_rgba(2,6,23,0.9)]">
             <div className="flex items-start justify-between">
               <EditorTopBar />
             </div>
