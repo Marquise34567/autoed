@@ -476,6 +476,7 @@ export default function EditorClientV2() {
                   <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
 
                   <div className="mt-4">
+                    <PipelineStepper current={status} />
                     <div className="mt-4">
                       <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
                     </div>
@@ -483,14 +484,15 @@ export default function EditorClientV2() {
                 </GlassCard>
               </div>
 
-              {/* Right: Status panel */}
+              {/* Right: Subscription Status panel */}
               <div className="lg:col-span-4">
                 <GlassCard variant="inner" className="p-6">
-                  <div className="flex flex-col gap-4">
-                    <div className="text-sm font-medium text-white/70">Status</div>
-                    <PipelineStepper current={status} />
-                    <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
-                    <ErrorPanel message={errorMessage} />
+                  <div className="w-full">
+                    {userDoc ? (
+                      <SubscriptionCard user={userDoc} />
+                    ) : (
+                      <div className="text-sm text-white/60">Subscription info unavailable</div>
+                    )}
                   </div>
                 </GlassCard>
               </div>
