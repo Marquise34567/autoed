@@ -19,7 +19,11 @@ function missingEnvVars() {
     "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
   ];
-  return required.filter((k) => !process.env[k]);
+  // Check only these exact NEXT_PUBLIC keys and return which are missing/empty
+  return required.filter((k) => {
+    const v = (process.env as any)[k];
+    return !v;
+  });
 }
 
 if (isBrowser) {
@@ -45,6 +49,21 @@ if (isBrowser) {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
   };
+
+  // Client-only boolean presence debug (do NOT log actual secret values)
+  try {
+    // eslint-disable-next-line no-console
+    console.log("firebase env present?", {
+      apiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: !!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: !!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    });
+  } catch (e) {
+    // ignore logging errors
+  }
 
   try {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
