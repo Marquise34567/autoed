@@ -27,8 +27,5 @@ export function assertServerEnv(): void {
 }
 
 export function assertClientEnv(): void {
-  // Client side only minimal checks (do not throw during SSR client bundles)
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn('[env] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY missing')
-  }
+  // Client-side env checks intentionally disabled to avoid noisy console warnings.
 }
