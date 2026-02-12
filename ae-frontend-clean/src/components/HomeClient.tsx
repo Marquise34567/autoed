@@ -65,50 +65,15 @@ export default function HomeClient() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="text-xs sm:text-sm font-medium text-white/70">Video Analysis</div>
-                      <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-center">
-                        <div className="mb-3 sm:mb-4 text-2xl sm:text-3xl">📹</div>
-                        <p className="text-sm text-white/60">Analyzing video...</p>
-                        <div className="mt-3 sm:mt-4 w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                          <div className="bg-blue-500 h-full w-2/3 animate-pulse rounded-full"></div>
-                        </div>
-                        <p className="text-xs text-white/40 mt-2">2m 45s detected</p>
+                  <div>
+                    <div className="text-xs sm:text-sm font-medium text-white/70">Video Analysis</div>
+                    <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-center">
+                      <div className="mb-3 sm:mb-4 text-2xl sm:text-3xl">📹</div>
+                      <p className="text-sm text-white/60">Analyzing video...</p>
+                      <div className="mt-3 sm:mt-4 w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                        <div className="bg-blue-500 h-full w-2/3 rounded-full"></div>
                       </div>
-                    </div>
-
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="text-xs sm:text-sm font-medium text-white/70">Generated Clips</div>
-                      <div className="space-y-3">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-3 flex items-center gap-2 sm:gap-3 hover:bg-white/10 transition cursor-pointer">
-                            <div className="h-10 sm:h-12 w-16 sm:w-20 shrink-0 rounded bg-linear-to-r from-blue-500/30 to-purple-500/30 flex items-center justify-center text-xs text-white/50">
-                              00:{10 + i * 5}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-white/80 truncate">Clip {i}</div>
-                              <div className="text-xs text-white/40">{30 + i * 5}s duration</div>
-                            </div>
-                            <div className="text-green-400 text-xs font-semibold">{90 + i * 2}%</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-3 sm:pt-4 border-t border-white/10">
-                    <div className="text-center">
-                      <div className="text-xl sm:text-2xl font-semibold text-blue-400">3</div>
-                      <div className="text-[10px] sm:text-xs text-white/50 mt-1">Clips Ready</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl sm:text-2xl font-semibold text-emerald-400">45s</div>
-                      <div className="text-[10px] sm:text-xs text-white/50 mt-1">Avg Duration</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl sm:text-2xl font-semibold text-purple-400">94%</div>
-                      <div className="text-[10px] sm:text-xs text-white/50 mt-1">Quality Score</div>
+                      <p className="text-xs text-white/40 mt-2">2m 45s detected</p>
                     </div>
                   </div>
                 </div>

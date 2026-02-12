@@ -16,15 +16,6 @@ function toScorePct(c:any){
 }
 
 export default function ClipsPanel({ clips }:{ clips:any[] }){
-  const list = Array.isArray(clips) ? clips.slice(0,3) : []
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="text-xs font-medium text-white/70">Generated Clips</div>
-      <div className="flex flex-col gap-3">
-        {list.map((c, i) => (
-          <ClipRow key={i} clip={{ id: `${i+1}`, startSec: toStartSec(c), durationSec: toDurSec(c), scorePct: toScorePct(c) }} />
-        ))}
-      </div>
-    </div>
-  )
+  // Generated Clips UI intentionally removed per design requirement.
+  return null
 }

@@ -2,10 +2,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import EditorShell from '@/components/editor-v2/EditorShell'
-import AnalysisCard from '@/components/editor-v2/AnalysisCard'
 import EditorHeader from '@/components/editor-v2/EditorHeader'
 import VideoAnalysisPanel from '@/components/editor-v2/VideoAnalysisPanel'
-import ClipsPanel from '@/components/editor-v2/ClipsPanel'
+import GlassCard from '@/components/GlassCard'
 import UploadCTA from '@/components/editor-v2/UploadCTA'
 import PipelineStepper from '@/components/editor-v2/PipelineStepper'
 import ProgressPanel from '@/components/editor-v2/ProgressPanel'
@@ -453,37 +452,48 @@ export default function EditorClientV2() {
 
   return (
     <EditorShell>
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-7xl rounded-3xl bg-[linear-gradient(180deg,#07090f,#05060a)] p-6 sm:p-8 border border-white/6 shadow-2xl backdrop-blur-md">
+      <div className="min-h-screen flex items-start justify-center p-6">
+        <div className="w-full max-w-7xl p-6 sm:p-8">
           <EditorHeader status={status} />
           <div className="h-px bg-white/6 my-3" />
 
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="md:flex-1">
-              <div className="mb-4">
-                <input
-                  type="file"
-                  accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
-                  hidden
-                  ref={fileInputRef}
-                  onChange={handleFileSelected}
-                />
-                <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Editor panel */}
+              <div className="lg:col-span-8">
+                <GlassCard variant="inner" className="p-6">
+                  <div className="mb-4">
+                    <input
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
+                      hidden
+                      ref={fileInputRef}
+                      onChange={handleFileSelected}
+                    />
+                    <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
+                  </div>
+
+                  {/* Video analysis and editor content (kept intact) */}
+                  <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
+
+                  <div className="mt-4">
+                    <div className="mt-4">
+                      <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
+                    </div>
+                  </div>
+                </GlassCard>
               </div>
 
-              <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
-
-              <div className="mt-4">
-                <PipelineStepper current={status} />
-                <div className="mt-4">
-                  <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
-                </div>
+              {/* Right: Status panel */}
+              <div className="lg:col-span-4">
+                <GlassCard variant="inner" className="p-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="text-sm font-medium text-white/70">Status</div>
+                    <PipelineStepper current={status} />
+                    <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
+                    <ErrorPanel message={errorMessage} />
+                  </div>
+                </GlassCard>
               </div>
-            </div>
-
-            <div className="md:w-1/2 lg:w-1/3">
-              <ClipsPanel clips={clips} />
-            </div>
           </div>
 
           {userDoc && (

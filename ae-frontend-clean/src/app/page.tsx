@@ -49,8 +49,7 @@ export default function Home() {
                 <div className="text-base font-semibold">Auto-Editor</div>
                 <div className="flex items-center gap-2 text-sm text-white/60"><div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />Processing</div>
               </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-                <div>
+                <div className="mt-6">
                   <div className="text-xs font-medium text-white/70">Video Analysis</div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center mt-2">
                     <div className="mb-3 text-2xl">📹</div>
@@ -61,23 +60,6 @@ export default function Home() {
                     <p className="text-xs text-white/40 mt-2">2m 45s detected</p>
                   </div>
                 </div>
-
-                <div>
-                  <div className="text-xs font-medium text-white/70">Generated Clips</div>
-                  <div className="space-y-3 mt-2">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="rounded-lg border border-white/10 bg-white/5 p-3 flex items-center gap-3 animate-fade-up" style={{ animationDelay: `${300 + i*120}ms` }}>
-                        <div className="h-10 w-20 bg-gradient-to-r from-blue-500/30 to-purple-500/30 flex items-center justify-center text-xs text-white/50 rounded">00:{10 + i*5}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-white/80 truncate">Clip {i}</div>
-                          <div className="text-xs text-white/40">{30 + i*5}s duration</div>
-                        </div>
-                        <div className="text-green-400 text-xs font-semibold">{90 + i*2}%</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
