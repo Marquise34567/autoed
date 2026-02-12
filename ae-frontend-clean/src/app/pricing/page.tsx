@@ -11,7 +11,7 @@ import { UserNav } from '@/components/UserNav';
 import { createCheckoutUrl, storeReturnTo, getCurrentPath } from '@/lib/client/returnTo';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { trackPostHogEvent, trackPlausibleEvent } from '@/lib/analytics/client';
-import { auth } from '@/lib/firebase/client';
+import { auth } from '@/lib/firebase.client';
 import { EDITOR_ROUTE, LOGIN_ROUTE, makeLoginUrl } from '@/lib/routes';
 import { getPriceIdFor } from '@/config/stripePrices';
 import { startCheckout } from '@/lib/stripe/client';

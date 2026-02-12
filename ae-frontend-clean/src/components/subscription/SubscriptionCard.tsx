@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { makeLoginUrl } from '@/lib/routes'
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase.client'
 import { getRendersLeft, planFeatures } from '@/lib/plans'
 
 export default function SubscriptionCard({ user }:{ user: any }){

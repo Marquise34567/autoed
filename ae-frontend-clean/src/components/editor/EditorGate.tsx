@@ -12,7 +12,7 @@ import { MobileNav } from '@/components/MobileNav'
 import { UserNav } from '@/components/UserNav'
 import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
-import { auth, db as firestore } from '@/lib/firebase/client'
+import { auth, db as firestore } from '@/lib/firebase.client'
 import { doc, getDoc } from 'firebase/firestore'
 import { isPremium } from '@/lib/subscription'
 

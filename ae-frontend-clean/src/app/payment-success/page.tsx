@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/useAuth'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '@/lib/firebase/client'
+import { db } from '@/lib/firebase.client'
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams()

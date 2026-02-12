@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EDITOR_ROUTE } from '@/lib/routes'
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase.client'
 import { getIdToken } from 'firebase/auth'
 import { Logo } from '@/components/Logo';
 import { PLANS, type PlanId } from '@/config/plans';

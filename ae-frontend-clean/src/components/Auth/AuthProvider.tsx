@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, User as FirebaseUser, setPersistence, browserLocalPersistence } from 'firebase/auth'
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase.client'
 
 type AuthContextType = {
   user: { id: string; email?: string } | null

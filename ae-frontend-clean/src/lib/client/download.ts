@@ -1,6 +1,6 @@
 "use client";
 
-import { auth } from '@/lib/firebase/client'
+import { auth } from '@/lib/firebase.client'
 
 /**
  * Minimal client helper to initiate a secure download.
