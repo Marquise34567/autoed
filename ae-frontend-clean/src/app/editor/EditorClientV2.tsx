@@ -82,7 +82,7 @@ export default function EditorClientV2() {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('Not signed in')
     const idToken = await currentUser.getIdToken(true)
-    const resp = await fetch(`${API_BASE}/video/download`, {
+    const resp = await fetch(`${API_BASE}/api/video/download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
       body: JSON.stringify({ jobId }),
