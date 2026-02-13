@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { API_BASE } from '@/lib/api'
 
 /**
  * PendingSubscriptionBanner
@@ -27,7 +28,7 @@ export function PendingSubscriptionBanner() {
     }
 
     // Check billing status API for pending verification
-    fetch('/api/billing/status')
+    fetch(`${API_BASE}/api/billing/status`)
       .then(async (res) => {
         if (!res.ok) {
           const txt = await res.text().catch(() => '')

@@ -3,6 +3,8 @@
  * via a signed URL (no serverless function payload size limits)
  */
 
+import { API_BASE } from '@/lib/api'
+
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 
 export async function uploadVideoToStorage(
@@ -23,8 +25,8 @@ export async function uploadVideoToStorage(
   console.log(`[storage-upload] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
 
   // Step 1: Get the signed upload URL from the server
-  console.log(`[storage-upload] Requesting signed URL from /api/upload-url...`)
-  const uploadUrlResponse = await fetch('/api/upload-url', {
+  console.log(`[storage-upload] Requesting signed URL from ${API_BASE}/api/upload-url...`)
+  const uploadUrlResponse = await fetch(`${API_BASE}/api/upload-url`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -56,7 +58,7 @@ export async function uploadVideoToStorage(
       throw new Error('Missing signed URL in response')
     }
   } catch (e) {
-    throw new Error(`Invalid response from /api/upload-url: ${e}`)
+    throw new Error(`Invalid response from ${API_BASE}/api/upload-url: ${e}`)
   }
 
   // Step 2: Upload the file directly to Supabase Storage via signed URL

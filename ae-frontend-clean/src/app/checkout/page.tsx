@@ -10,6 +10,7 @@ import { Logo } from '@/components/Logo';
 import { safeJson } from '@/lib/client/safeJson';
 import { PLANS, type PlanId } from '@/config/plans';
 import { validateReturnTo } from '@/lib/client/returnTo';
+import { API_BASE } from '@/lib/api'
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -43,7 +44,7 @@ function CheckoutContent() {
         // ignore token retrieval errors; server will enforce auth if required
       }
 
-      const response = await fetch('/api/stripe/checkout', {
+      const response = await fetch(`${API_BASE}/api/stripe/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

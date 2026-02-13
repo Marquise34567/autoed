@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { API_BASE } from '@/lib/api'
 
 interface BillingStatus {
   plan: string;
@@ -39,7 +40,7 @@ export function BillingDebugPanel() {
   async function refreshStatus() {
     setLoading(true);
     try {
-      const res = await fetch('/api/billing/status');
+      const res = await fetch(`${API_BASE}/api/billing/status`);
       if (res.ok) {
         const data = await res.json();
         setBillingStatus(data);
@@ -58,7 +59,7 @@ export function BillingDebugPanel() {
   async function activate() {
     setLoading(true);
     try {
-      const res = await fetch('/api/billing/manual-activate', {
+      const res = await fetch(`${API_BASE}/api/billing/manual-activate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: 'starter' }),
@@ -81,7 +82,7 @@ export function BillingDebugPanel() {
     if (!confirm('Reset to free tier? This cannot be undone.')) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/billing/reset', {
+      const res = await fetch(`${API_BASE}/api/billing/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

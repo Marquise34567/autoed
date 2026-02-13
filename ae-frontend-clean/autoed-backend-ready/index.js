@@ -8,6 +8,45 @@ const { randomUUID } = require('crypto')
 
 const app = express()
 
+// Firebase Admin initialization (lazy safe init)
+let firebaseAdminInitialized = false
+let admin = null
+function initFirebaseAdmin() {
+  if (firebaseAdminInitialized) return { ok: true }
+  try {
+    admin = require('firebase-admin')
+    const projectId = process.env.FIREBASE_PROJECT_ID
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
+
+    if (!projectId || !clientEmail || !privateKey || !storageBucket) {
+      console.error('[firebase] not all env vars present for firebase admin init')
+      return { ok: false, error: 'Missing Firebase configuration (check env vars)' }
+    }
+
+    // Handle escaped newlines in private key
+    privateKey = privateKey.replace(/\\n/g, '\n')
+
+    const credential = {
+      projectId,
+      clientEmail,
+      privateKey
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert(credential),
+      storageBucket
+    })
+    firebaseAdminInitialized = true
+    console.log('[firebase] admin initialized successfully (secrets hidden)')
+    return { ok: true }
+  } catch (err) {
+    console.error('[firebase] admin init error:', err && err.message ? err.message : err)
+    return { ok: false, error: String(err) }
+  }
+}
+
 // Body parsers
 app.use(express.json({ limit: '25mb' }))
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
@@ -39,6 +78,54 @@ app.options('*', cors(corsOptions))
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 app.get('/', (_req, res) => res.json({ message: 'autoed-backend-ready' }))
+
+// Upload URL route: returns signed URL for client to PUT upload to Firebase Storage
+// Test with curl (replace values):
+// curl -X POST https://your-backend.example.com/api/upload-url \
+//  -H "Content-Type: application/json" \
+//  -d '{"filename":"test.mp4","contentType":"video/mp4"}'
+// Expected success JSON: { ok:true, signedUrl:"https://...", bucket:"...", path:"uploads/<ts>-test.mp4", expiresInSeconds:900 }
+// Expected failure JSON: { ok:false, error:"<message>", code:"<optional>" }
+app.post('/api/upload-url', async (req, res) => {
+  try {
+    const init = initFirebaseAdmin()
+    if (!init.ok) {
+      return res.status(500).json({ ok: false, error: init.error || 'Failed to initialize Firebase Admin' })
+    }
+
+    const { filename, contentType } = req.body || {}
+    if (!filename || !contentType) {
+      return res.status(400).json({ ok: false, error: 'Missing filename or contentType' })
+    }
+
+    // sanitize filename
+    const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
+    const timestamp = Date.now()
+    const path = `uploads/${timestamp}-${safeName}`
+
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET
+    const bucket = admin.storage().bucket()
+    const file = bucket.file(path)
+
+    const expiresInSeconds = 15 * 60 // 15 minutes
+    const options = {
+      version: 'v4',
+      action: 'write',
+      expires: Date.now() + expiresInSeconds * 1000,
+      contentType: contentType
+    }
+
+    const [signedUrl] = await file.getSignedUrl(options)
+    if (!signedUrl) {
+      return res.status(500).json({ ok: false, error: 'Missing signed URL from Firebase' })
+    }
+
+    return res.json({ ok: true, signedUrl, bucket: bucketName, path, expiresInSeconds })
+  } catch (err) {
+    console.error('/api/upload-url error:', err && err.message ? err.message : err)
+    return res.status(500).json({ ok: false, error: (err && err.message) ? err.message : String(err) })
+  }
+})
 
 // Minimal userdoc route expected by frontend
 app.get('/api/userdoc', (req, res) => {

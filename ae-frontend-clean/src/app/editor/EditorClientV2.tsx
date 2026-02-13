@@ -3,6 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import EditorShell from '@/components/editor-v2/EditorShell'
 import EditorHeader from '@/components/editor-v2/EditorHeader'
+import TopToolbar from '@/components/editor-v2/TopToolbar'
+import LeftMediaPanel from '@/components/editor-v2/LeftMediaPanel'
+import CenterPreviewPanel from '@/components/editor-v2/CenterPreviewPanel'
+import TimelinePanel from '@/components/editor-v2/TimelinePanel'
+import RightInspectorPanel from '@/components/editor-v2/RightInspectorPanel'
 import VideoAnalysisPanel from '@/components/editor-v2/VideoAnalysisPanel'
 import GlassCard from '@/components/GlassCard'
 import UploadCTA from '@/components/editor-v2/UploadCTA'
@@ -420,14 +425,24 @@ export default function EditorClientV2() {
     <EditorShell>
       <div className="min-h-screen flex items-start justify-center p-6">
         <div className="w-full max-w-7xl p-6 sm:p-8">
+          <div className="w-full rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+            {/* inner container to create big glass card */}
+            
           <EditorHeader status={status} />
           <div className="h-px bg-white/6 my-3" />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left: Editor panel */}
-              <div className="lg:col-span-8">
-                <GlassCard variant="inner" className="p-6">
-                  <div className="mb-4">
+          <TopToolbar />
+
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-3">
+              <LeftMediaPanel onPickClick={openFilePicker} fileInputRef={fileInputRef} onFileChange={handleFileSelected} media={clips} />
+            </div>
+
+            <div className="lg:col-span-6">
+              <CenterPreviewPanel status={status}>
+                {/* keep the existing upload and analysis components intact inside preview */}
+                <div className="w-full h-full flex flex-col gap-4">
+                  <div>
                     <input
                       type="file"
                       accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
@@ -438,45 +453,41 @@ export default function EditorClientV2() {
                     <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
                   </div>
 
-                  {/* Video analysis and editor content (kept intact) */}
                   <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
 
-                  <div className="mt-4">
+                  <div>
                     <PipelineStepper current={status} />
                     <div className="mt-4">
                       <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
                     </div>
                   </div>
-                </GlassCard>
-              </div>
+                </div>
+              </CenterPreviewPanel>
 
-              {/* Right: Subscription Status panel */}
-              <div className="lg:col-span-4">
-                <GlassCard variant="inner" className="p-6">
-                  <div className="w-full">
-                    {userDoc ? (
-                      <SubscriptionCard user={userDoc} />
-                    ) : (
-                      <div className="text-sm text-white/60">Subscription info unavailable</div>
-                    )}
-                  </div>
-                </GlassCard>
-              </div>
-          </div>
-
-          {userDoc && (
-            <div className="mt-6">
-              <div className="w-full rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-4 sm:p-6 backdrop-blur-lg shadow-2xl">
-                <SubscriptionCard user={userDoc} />
+              <div className="mt-4">
+                <TimelinePanel clips={clips} />
               </div>
             </div>
-          )}
+
+            <div className="lg:col-span-3">
+              <RightInspectorPanel status={status} overallProgress={overallProgress} onGenerate={() => { /* placeholder */ }}>
+                <div className="mt-2">
+                  {userDoc ? (
+                    <SubscriptionCard user={userDoc} />
+                  ) : (
+                    <div className="text-sm text-white/60">Subscription info unavailable</div>
+                  )}
+                </div>
+              </RightInspectorPanel>
+            </div>
+          </div>
 
           {popup && (
             <NotificationPopup title={popup.title} lines={popup.lines} onClose={() => setPopup(null)} />
           )}
         </div>
       </div>
+    </div>
 
       {/* Preview modal that pops up when download is ready */}
       {showPreview && (
