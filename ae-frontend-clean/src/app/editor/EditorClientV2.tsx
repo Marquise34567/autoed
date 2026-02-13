@@ -367,7 +367,17 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            type="file"
+            accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
+            hidden
+            ref={fileInputRef}
+            onChange={handleFileSelected}
+          />
+
+          <button onClick={openFilePicker} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Upload</button>
+
           <button onClick={reset} className="px-3 py-2 bg-red-600 rounded">Reset</button>
         </div>
       </div>
