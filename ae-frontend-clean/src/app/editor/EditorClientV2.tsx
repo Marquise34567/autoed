@@ -136,10 +136,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       setErrorMessage('Unsupported file type — use MP4, MOV, MKV, or WEBM')
       return
     }
-    // optional size hint
-    const maxMB = 200
+    // optional size limit: 1 GB
+    const maxMB = 1024
     if (selected.size / 1024 / 1024 > maxMB) {
-      setErrorMessage(`File is large (${Math.round(selected.size/1024/1024)} MB). Try a smaller file or use a faster connection.`)
+      setErrorMessage(`File is too large (${Math.round(selected.size/1024/1024)} MB). Maximum allowed is ${maxMB} MB (1 GB).`)
       return
     }
 
