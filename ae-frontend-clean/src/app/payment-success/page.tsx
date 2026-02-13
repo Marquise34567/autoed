@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/useAuth'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '@/lib/firebase.client'
+import { db, isFirebaseConfigured } from '@/lib/firebase.client'
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams()
@@ -17,6 +17,7 @@ export default function PaymentSuccessPage() {
   const next = searchParams?.get('next') || '/editor'
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) return
     if (!authReady) return
     if (!user) {
       // Not signed in - redirect to login retaining next -> this page will reload after sign in
@@ -25,6 +26,10 @@ export default function PaymentSuccessPage() {
     }
 
     const uid = auth.currentUser?.uid || user.id || (user as any)?.uid
+    if (!db) {
+      setStatus('unknown')
+      return
+    }
     const userDocRef = doc(db, 'users', uid)
     const unsub = onSnapshot(userDocRef, (snap) => {
       const data = (snap.exists() ? snap.data() : null) as any

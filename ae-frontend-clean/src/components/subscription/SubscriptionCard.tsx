@@ -3,10 +3,17 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { makeLoginUrl } from '@/lib/routes'
-import { auth } from '@/lib/firebase.client'
+import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 import { getRendersLeft, planFeatures } from '@/lib/plans'
 
 export default function SubscriptionCard({ user }:{ user: any }){
+  if (!isFirebaseConfigured()) {
+    return (
+      <div className="w-full h-full relative rounded-3xl p-6 bg-linear-to-br from-[#071018]/85 via-[#09101a]/75 to-[#071018]/85 border border-white/6 ring-1 ring-white/6 shadow-2xl backdrop-blur-md text-center">
+        <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
+      </div>
+    )
+  }
   const router = useRouter()
   const plan = (user?.plan || 'free')
   const status = user?.subscriptionStatus || (plan === 'free' ? 'inactive' : 'active')

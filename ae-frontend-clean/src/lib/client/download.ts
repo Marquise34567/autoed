@@ -1,6 +1,6 @@
 "use client";
 
-import { auth } from '@/lib/firebase.client'
+import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 
 /**
  * Minimal client helper to initiate a secure download.
@@ -8,7 +8,8 @@ import { auth } from '@/lib/firebase.client'
  * This requests a fresh signed URL and redirects the browser immediately.
  */
 export async function startDownload(jobId: string) {
-  const user = auth.currentUser
+  if (!isFirebaseConfigured()) throw new Error('Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.')
+  const user = auth?.currentUser
   if (!user) throw new Error('Not authenticated')
   const idToken = await user.getIdToken(true)
 

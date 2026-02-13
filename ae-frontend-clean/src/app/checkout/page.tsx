@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EDITOR_ROUTE } from '@/lib/routes'
-import { auth } from '@/lib/firebase.client'
+import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 import { getIdToken } from 'firebase/auth'
 import { Logo } from '@/components/Logo';
 import { PLANS, type PlanId } from '@/config/plans';
@@ -76,6 +76,11 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-[#07090f] text-white">
+      {!isFirebaseConfigured() && (
+        <div className="fixed inset-x-0 top-16 z-50 flex items-center justify-center">
+          <div className="bg-yellow-600/95 text-black px-4 py-2 rounded">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
+        </div>
+      )}
       {/* Background gradient blurs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-[-20%] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-[120px]" />

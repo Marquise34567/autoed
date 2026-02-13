@@ -12,12 +12,21 @@ import { MobileNav } from '@/components/MobileNav'
 import { UserNav } from '@/components/UserNav'
 import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
-import { auth, db as firestore } from '@/lib/firebase.client'
+import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
 import { doc } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 import { isPremium } from '@/lib/subscription'
 
 export default function EditorGate() {
+  if (!isFirebaseConfigured()) {
+    return (
+      <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
+        </div>
+      </div>
+    )
+  }
   const { user, authReady } = useAuth()
   const router = useRouter()
   const [userDoc, setUserDoc] = useState<any | null>(null)

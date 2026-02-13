@@ -1,9 +1,14 @@
 "use client";
 
-import { auth } from "@/lib/firebase.client";
+import { auth, isFirebaseConfigured } from "@/lib/firebase.client";
 
 export async function getOrCreateUserDoc(_uid: string) {
   console.info("[userdoc] fetch via server route");
+  if (!isFirebaseConfigured()) {
+    console.warn('[userdoc] Firebase not configured; returning fallback userdoc')
+    return { plan: 'starter', status: 'unknown', source: 'fallback' }
+  }
+
   try {
     try { console.log("Navigator online:", navigator.onLine) } catch (_) {}
 

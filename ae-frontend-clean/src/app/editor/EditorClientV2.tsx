@@ -14,7 +14,7 @@ import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import NotificationPopup from '@/components/NotificationPopup'
 import { planFeatures } from '@/lib/plans'
 import { uploadVideoToStorage } from '@/lib/client/storage-upload'
-import { auth, db as firestore } from '@/lib/firebase.client'
+import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
 import { useAuth } from '@/lib/auth/useAuth'
 import { requirePremium } from '@/lib/subscription'
 import { useRouter } from 'next/navigation'
@@ -28,6 +28,15 @@ import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
 
 export default function EditorClientV2() {
+  if (!isFirebaseConfigured()) {
+    return (
+      <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
+        </div>
+      </div>
+    )
+  }
   const { user, authReady } = useAuth()
   const router = useRouter()
   // moved navigator access into an effect to avoid module-scope window access

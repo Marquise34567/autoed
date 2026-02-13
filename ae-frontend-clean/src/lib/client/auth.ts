@@ -15,6 +15,14 @@ export interface AuthUser {
  */
 export async function checkAuth(): Promise<AuthUser | null> {
   try {
+
+    // If Firebase not configured, avoid importing SDK and return null
+    const { isFirebaseConfigured } = await import('@/lib/firebase.client')
+      .then((m) => ({ isFirebaseConfigured: (m as any).isFirebaseConfigured || (() => false) }))
+      .catch(() => ({ isFirebaseConfigured: () => false }));
+
+    if (!isFirebaseConfigured()) return null;
+
     // Use Firebase client SDK to determine current user. If auth state isn't
     // initialized yet, wait briefly for onAuthStateChanged.
     const { auth } = await import('@/lib/firebase.client').then((m) => ({ auth: (m as any).auth ?? (m as any).default?.auth })).catch(() => ({ auth: null }));
