@@ -1,14 +1,21 @@
-import admin from "firebase-admin";
+import admin from 'firebase-admin'
+
+const projectId = process.env.FIREBASE_PROJECT_ID
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
+let privateKey = process.env.FIREBASE_PRIVATE_KEY
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-    storageBucket: "autoeditor-d4940.firebasestorage.app",
-  });
+  if (!projectId || !clientEmail || !privateKey) {
+    // Do not throw here; server routes will surface missing env vars as needed
+    console.warn('[firebase-admin] missing firebase admin env vars')
+  } else {
+    // Replace escaped newlines in the private key if present
+    privateKey = privateKey.replace(/\\n/g, '\n')
+    admin.initializeApp({
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+      projectId,
+    })
+  }
 }
 
-export const bucket = admin.storage().bucket();
+export { admin }
