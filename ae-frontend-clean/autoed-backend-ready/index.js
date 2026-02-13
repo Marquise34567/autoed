@@ -57,6 +57,20 @@ app.get('/api/userdoc', (req, res) => {
   }
 })
 
+// Fallback route in case proxy strips /api prefix
+app.get('/userdoc', (req, res) => {
+  try {
+    const auth = req.headers && req.headers.authorization
+    if (auth === 'required') {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('/userdoc error:', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Jobs route for frontend POSTs
 app.post('/jobs', async (req, res) => {
   try {
