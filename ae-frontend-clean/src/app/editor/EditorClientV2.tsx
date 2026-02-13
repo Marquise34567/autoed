@@ -383,40 +383,100 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const card = (
     <div className="w-full max-w-2xl p-6">
       <div className="rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md shadow-xl">
-        <h2 className="text-xl font-semibold mb-4">Editor Pipeline</h2>
+        <h2 className="text-2xl font-bold mb-4">Editor Pipeline</h2>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <PipelineStepper current={status} />
         </div>
 
-        <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-white/70">Status</div>
-              <div className="font-semibold text-white">{status}</div>
-              <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left: upload + original preview */}
+          <div className="col-span-7 space-y-4">
+            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-white/70">Upload</div>
+                  <div className="font-semibold text-white">Select a video to analyze</div>
+                </div>
+                <div className="text-sm text-white/60">{selectedFile ? `${selectedFile.name}` : ''}</div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
+                  hidden
+                  ref={fileInputRef}
+                  onChange={handleFileSelected}
+                />
+
+                <button
+                  onClick={openFilePicker}
+                  disabled={isUploading || (status !== 'idle' && status !== 'done')}
+                  className={`px-4 py-2 rounded-full font-semibold shadow transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/20 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white'}`}
+                >
+                  {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Upload New' : 'Upload')}
+                </button>
+
+                {status === 'done' && jobResp?.result?.videoUrl && (
+                  <a href={jobResp.result.videoUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Download</a>
+                )}
+
+                <button onClick={reset} className="px-3 py-2 rounded-lg border border-white/8 text-white/80">Reset</button>
+              </div>
+
+              <div className="mt-3 text-xs text-white/60">Tips: MP4/MOV/WEBM supported — up to 1 GB.</div>
             </div>
 
-            <div className="text-right">
-              <div className="text-sm text-white/70">Progress</div>
-              <div className="text-lg font-semibold text-white">{Math.round((overallProgress || 0) * 100)}%</div>
-              <div className="text-xs text-white/60 mt-1">{overallEtaSec ? `${Math.round(overallEtaSec)}s ETA` : ''}</div>
+            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+              <div className="text-sm text-white/70">Original preview</div>
+              {originalUrl ? (
+                <video src={originalUrl} controls className="mt-3 w-full rounded-md bg-black" />
+              ) : (
+                <div className="mt-3 text-sm text-white/60">No file selected</div>
+              )}
             </div>
           </div>
-        </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <input
-            type="file"
-            accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
-            hidden
-            ref={fileInputRef}
-            onChange={handleFileSelected}
-          />
+          {/* Right: progress, result preview, details */}
+          <div className="col-span-5 space-y-4">
+            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-sm text-white/70">Processing Status</div>
+                  <div className="font-semibold text-white">{status === 'idle' ? 'Waiting for upload' : (status === 'uploading' ? 'Uploading' : status === 'analyzing' ? 'Analyzing full video' : status === 'hook' ? 'Selecting best hook (3–5s)' : status === 'cutting' ? 'Extracting highlights (5–10s)' : status === 'pacing' ? 'Optimizing pacing' : status === 'rendering' ? 'Rendering final video' : status === 'uploading_result' ? 'Uploading result' : status === 'done' ? 'Complete' : 'Error')}</div>
+                  <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-white/70">Progress</div>
+                  <div className="text-lg font-semibold text-white">{Math.round((Array.isArray(jobResp?.progress) ? 0 : ((jobResp?.progress ?? overallProgress) || 0)) * (jobResp?.progress && jobResp.progress <= 1 ? 100 : 1))}%</div>
+                </div>
+              </div>
 
-          <button onClick={openFilePicker} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Upload</button>
+              <div className="mt-3">
+                <ProgressBar value={ (jobResp?.progress ?? overallProgress) as any } />
+              </div>
 
-          <button onClick={reset} className="px-3 py-2 bg-red-600 rounded">Reset</button>
+              {errorMessage && (
+                <div className="mt-3 p-3 rounded-md bg-red-700/20 border border-red-600 text-sm text-red-200">{errorMessage}</div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+              <div className="text-sm text-white/70">Result preview</div>
+              {jobResp?.result?.videoUrl ? (
+                <video src={jobResp.result.videoUrl} controls className="mt-3 w-full rounded-md bg-black" />
+              ) : previewLoading ? (
+                <div className="mt-3 text-sm text-white/60">Loading preview…</div>
+              ) : (
+                <div className="mt-3 text-sm text-white/60">No result yet</div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+              <JobDetails hook={jobResp?.hook ?? null} segments={jobResp?.segments ?? null} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
