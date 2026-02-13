@@ -14,7 +14,7 @@ import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import { auth, db as firestore } from '@/lib/firebase.client'
 import { doc } from 'firebase/firestore'
-import { getOrCreateUserDoc } from '@/lib/firebase/safeUserDoc'
+import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 import { isPremium } from '@/lib/subscription'
 
 export default function EditorGate() {

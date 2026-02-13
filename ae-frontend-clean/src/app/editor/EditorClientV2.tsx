@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation'
 import { safeJson } from '@/lib/client/safeJson'
 import { API_BASE } from '@/lib/api'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { getOrCreateUserDoc } from '@/lib/firebase/safeUserDoc'
+import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
 type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
 
