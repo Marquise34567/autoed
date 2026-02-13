@@ -103,7 +103,7 @@ export default function EditorClientPage() {
         setProgressStep(Math.round(pct))
       }
       const { storagePath } = await uploadVideoToStorage(file, onProgress)
-      const createResp = await fetch(`${API_BASE}/jobs`, {
+      const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: storagePath }),

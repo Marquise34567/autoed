@@ -199,7 +199,7 @@ export default function EditorClientV2() {
 
       setStatus('analyzing')
       setOverallProgress(0.25)
-      const createResp = await fetch(`${API_BASE}/jobs`, {
+      const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
         body: JSON.stringify({ path: storagePath }),
@@ -238,7 +238,7 @@ export default function EditorClientV2() {
 
       const connect = async () => {
         if (esRef.current) try { esRef.current.close() } catch (_) {}
-        let url = `${API_BASE}/jobs/${jid}/events`
+        let url = `${API_BASE}/api/jobs/${jid}/events`
         if (process.env.NODE_ENV === 'development') {
           try {
             const token = await (typeof getTokenForSSE === 'function' ? getTokenForSSE() : null)
@@ -337,7 +337,7 @@ export default function EditorClientV2() {
     const tick = async () => {
       if (cancelled) return
       try {
-        const r = await fetch(`${API_BASE}/jobs/${jid}`)
+        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
         if (!r.ok) {
           if (r.status >= 400 && r.status < 500 && r.status !== 404) {
             if (process.env.NODE_ENV === 'development') console.warn(`[poll:${jid}] received ${r.status}`)
