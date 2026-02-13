@@ -14,7 +14,7 @@ import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import { auth, db as firestore } from '@/lib/firebase.client'
 import { doc } from 'firebase/firestore'
-import { safeGetUserDoc } from '@/lib/firebase/safeUserDoc'
+import { getOrCreateUserDoc } from '@/lib/firebase/safeUserDoc'
 import { isPremium } from '@/lib/subscription'
 
 export default function EditorGate() {
@@ -88,7 +88,8 @@ export default function EditorGate() {
 
     const load = async () => {
       try {
-        const userData = await safeGetUserDoc(user.id)
+        const uid = auth.currentUser?.uid || user.id || (user as any)?.uid
+        const userData = uid ? await getOrCreateUserDoc(uid) : null
         if (!active) return
         if (userData) setUserDoc(userData)
         else setUserDoc({ uid: user.id, plan: 'free', rendersLimit: 12, rendersUsed: 0 })

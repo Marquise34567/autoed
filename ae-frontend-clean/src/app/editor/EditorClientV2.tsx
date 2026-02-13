@@ -20,8 +20,8 @@ import { requirePremium } from '@/lib/subscription'
 import { useRouter } from 'next/navigation'
 import { safeJson } from '@/lib/client/safeJson'
 import { API_BASE } from '@/lib/api'
-import { doc, updateDoc } from 'firebase/firestore'
-import { safeGetUserDoc } from '@/lib/firebase/safeUserDoc'
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { getOrCreateUserDoc } from '@/lib/firebase/safeUserDoc'
 
 type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
 
@@ -105,14 +105,14 @@ export default function EditorClientV2() {
     try {
       unsub = auth.onAuthStateChanged(async (u)=>{
         if (!u) { setUserDoc(null); return }
-            try {
-              const userData = await safeGetUserDoc(u.uid)
-              if (userData) setUserDoc(userData)
-              else setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-            } catch (e) {
-              console.warn('failed to load user doc', e)
-              setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-            }
+                  try {
+                    const userData = await getOrCreateUserDoc(u.uid)
+                    if (userData) setUserDoc(userData)
+                    else setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
+                  } catch (e) {
+                    console.warn('failed to load or create user doc', e)
+                    setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
+                  }
       })
     } catch (e) {
       console.warn('auth listener failed', e)
@@ -361,16 +361,17 @@ export default function EditorClientV2() {
       setOverallProgress(1)
       setShowPreview(true);
       (async () => {
-        try {
-          if (user && (user as any).id) {
-            const ref = doc(firestore, 'users', (user as any).id)
-            const currentUsed = (userDoc?.rendersUsed ?? 0) + 1
-            await updateDoc(ref, { rendersUsed: currentUsed })
-            setUserDoc((prev: any) => ({ ...(prev || {}), rendersUsed: currentUsed }))
+          try {
+            const uid = auth.currentUser?.uid || (user as any)?.id || (user as any)?.uid
+            if (uid) {
+              const ref = doc(firestore, 'users', uid)
+              const currentUsed = (userDoc?.rendersUsed ?? 0) + 1
+              await updateDoc(ref, { rendersUsed: currentUsed, updatedAt: serverTimestamp() })
+              setUserDoc((prev: any) => ({ ...(prev || {}), rendersUsed: currentUsed }))
+            }
+          } catch (e) {
+            console.warn('[billing] failed to update rendersUsed', e)
           }
-        } catch (e) {
-          console.warn('[billing] failed to update rendersUsed', e)
-        }
       })()
     }
 

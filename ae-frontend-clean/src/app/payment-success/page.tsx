@@ -24,9 +24,10 @@ export default function PaymentSuccessPage() {
       return
     }
 
-    const userDocRef = doc(db, 'users', user.id)
+    const uid = auth.currentUser?.uid || user.id || (user as any)?.uid
+    const userDocRef = doc(db, 'users', uid)
     const unsub = onSnapshot(userDocRef, (snap) => {
-      const data = snap.data() as any
+      const data = (snap.exists() ? snap.data() : null) as any
       const planVal = data?.plan || null
       const statusVal = data?.status || null
       setPlan(planVal)
