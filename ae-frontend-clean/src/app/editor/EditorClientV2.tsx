@@ -1,24 +1,12 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import EditorShell from '@/components/editor-v2/EditorShell'
-import EditorHeader from '@/components/editor-v2/EditorHeader'
-import TopToolbar from '@/components/editor-v2/TopToolbar'
-import LeftMediaPanel from '@/components/editor-v2/LeftMediaPanel'
-import CenterPreviewPanel from '@/components/editor-v2/CenterPreviewPanel'
-import TimelinePanel from '@/components/editor-v2/TimelinePanel'
-import RightInspectorPanel from '@/components/editor-v2/RightInspectorPanel'
-import VideoAnalysisPanel from '@/components/editor-v2/VideoAnalysisPanel'
-import GlassCard from '@/components/GlassCard'
-import UploadCTA from '@/components/editor-v2/UploadCTA'
 import PipelineStepper from '@/components/editor-v2/PipelineStepper'
-import ProgressPanel from '@/components/editor-v2/ProgressPanel'
-import OutputPanel from '@/components/editor-v2/OutputPanel'
-import ErrorPanel from '@/components/editor-v2/ErrorPanel'
+import ProgressBar from '@/components/ProgressBar'
+import JobDetails from '@/components/editor/JobDetails'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import NotificationPopup from '@/components/NotificationPopup'
 import { planFeatures } from '@/lib/plans'
-import { uploadVideoToStorage } from '@/lib/client/storage-upload'
 import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
 import { useAuth } from '@/lib/auth/useAuth'
 import { requirePremium } from '@/lib/subscription'
@@ -30,7 +18,19 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
-type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
+type Status = 'idle' | 'uploading' | 'analyzing' | 'hook' | 'cutting' | 'pacing' | 'rendering' | 'uploading_result' | 'done' | 'error'
+
+type BackendStatus = 'queued' | 'analyzing' | 'hook' | 'cutting' | 'pacing' | 'rendering' | 'uploading' | 'done' | 'error'
+
+type JobResponse = {
+  status: BackendStatus
+  progress?: number
+  message?: string
+  hook?: { start: string; end: string; reason?: string }
+  segments?: Array<{ start: string; end: string; reason?: string }>
+  result?: { videoUrl: string; filename?: string }
+  error?: { code?: string; message?: string }
+}
 
 export default function EditorClientV2({ compact }: { compact?: boolean } = {}) {
   if (!isFirebaseConfigured()) {
@@ -67,6 +67,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [showPreview, setShowPreview] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pollRef = useRef<number | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+  const [jobResp, setJobResp] = useState<JobResponse | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   async function startEditorPipeline(file: File) {
     if (!authReady) {
@@ -74,6 +78,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       try { setErrorMessage('Waiting for authentication; please try again') } catch (_) {}
       return
     }
+    // user presence will be ensured by page guard; still safe-check
     const uid = user?.id || auth.currentUser?.uid
     if (!uid) {
       console.warn('[pipeline] no user available; cannot start pipeline')
@@ -87,7 +92,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     startedRef.current = true
     try {
       console.log('[pipeline] startEditorPipeline:', file.name, file.type)
-      await handleFile(file)
+      await createJobWithFile(file)
     } finally {
       startedRef.current = false
     }
@@ -125,67 +130,108 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       try { event.currentTarget.value = '' } catch (_) {}
       return
     }
-    await startEditorPipeline(selected)
+    // basic validation
+    const okType = /video\/(mp4|quicktime|x-matroska|webm)/i
+    if (!okType.test(selected.type) && !/\.(mp4|mov|mkv|webm)$/i.test(selected.name)) {
+      setErrorMessage('Unsupported file type — use MP4, MOV, MKV, or WEBM')
+      return
+    }
+    // optional size hint
+    const maxMB = 200
+    if (selected.size / 1024 / 1024 > maxMB) {
+      setErrorMessage(`File is large (${Math.round(selected.size/1024/1024)} MB). Try a smaller file or use a faster connection.`)
+      return
+    }
+
+    setErrorMessage(undefined)
+    setSelectedFile(selected)
+    try {
+      const url = URL.createObjectURL(selected)
+      setOriginalUrl(url)
+    } catch (_) { setOriginalUrl(null) }
+    await createJobWithFile(selected)
   }
 
-  async function handleFile(file: File) {
+  async function createJobWithFile(file: File) {
+    if (!authReady) {
+      setErrorMessage('Waiting for auth')
+      return
+    }
+    setIsUploading(true)
+    setStatus('uploading')
+    setOverallProgress(0)
+    setJobResp(null)
+    setJobId(undefined)
     try {
-      setStatus('uploading')
-      setOverallProgress(0)
-      setErrorMessage(undefined)
-      const onProgress = (pct: number) => {
-        try { setOverallProgress(Math.max(0, Math.min(1, pct))) } catch (_) {}
+      const fd = new FormData()
+      fd.append('video', file)
+      const current = auth.currentUser
+      const headers: Record<string,string> = {}
+      if (current) {
+        const t = await current.getIdToken(true)
+        headers['Authorization'] = `Bearer ${t}`
       }
-      const { storagePath } = await uploadVideoToStorage(file, onProgress)
-      const createResp = await fetch(`${API_BASE}/api/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: storagePath }),
-      })
-      const createJson = await safeJson(createResp)
-      if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
-      setJobId(createJson.jobId)
-      startJobListening(createJson.jobId)
+      const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', body: fd, headers })
+      const j = await safeJson(resp)
+      if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
+      const jid = j.jobId || j.jobID || j.id
+      setJobId(jid)
       setStatus('analyzing')
+      startPollingJob(jid)
     } catch (e: any) {
-      console.error('[upload] error', e)
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')
+    } finally {
+      setIsUploading(false)
     }
   }
 
-  const startJobListening = (jid: string) => {
-    if (!jid) return
-    // Clear any existing poll
-    try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
 
+
+  const startJobListening = (jid: string) => {
+    // compatibility wrapper retained but prefer startPollingJob
+    startPollingJob(jid)
+  }
+
+  const startPollingJob = (jid: string) => {
+    if (!jid) return
+    try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
     const tick = async () => {
       try {
         const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
         if (!r.ok) {
-          if (r.status === 404) {
-            // Job not found yet; keep polling
-            return
-          }
-          console.warn(`[poll:${jid}] received ${r.status}`)
+          if (r.status === 404) return
+          console.warn('[poll] status', r.status)
           return
         }
-        const job = await r.json()
-        if (!job) return
-        // Map backend job fields to UI
-        applyJobUpdate({ progress: job.progress, status: job.status, overallProgress: job.overallProgress, phase: job.phase, ...job })
-        const st = String(job.status || '').toLowerCase()
-        if (st === 'done' || st === 'error') {
+        const j: JobResponse = await r.json()
+        if (!j) return
+        setJobResp(j)
+        if (typeof j.progress === 'number') setOverallProgress(j.progress)
+        // map backend status to local status
+        const map: Record<string, Status> = {
+          queued: 'analyzing',
+          analyzing: 'analyzing',
+          hook: 'hook',
+          cutting: 'cutting',
+          pacing: 'pacing',
+          rendering: 'rendering',
+          uploading: 'uploading_result',
+          done: 'done',
+          error: 'error',
+        }
+        setStatus(map[j.status] || 'analyzing')
+        if (j.status === 'done' || j.status === 'error') {
           if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
         }
       } catch (e) {
         console.warn('[poll] fetch error', e)
       }
     }
-
-    // immediate tick then interval
     tick()
     pollRef.current = setInterval(tick, 2000) as unknown as number
+    // cleanup on route change/unmount
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
   }
 
   const startPollingFallback = (jid: string) => {
@@ -231,41 +277,33 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   }
 
   const applyJobUpdate = (d: any) => {
-    const phaseRaw = d?.phase
-    if (phaseRaw) {
-      const p = String(phaseRaw).toLowerCase()
-      if (p === 'error') setStatus('error')
-      else if (p === 'done') setStatus('done')
-      else setStatus(p as Status)
+    // Deprecated: retained for compatibility but primary updates come from startPollingJob
+    if (!d) return
+    if (typeof d.progress === 'number') setOverallProgress(d.progress)
+    if (d.hook) {
+      // keep detected clips if provided
+      if (Array.isArray(d.segments)) setClips(d.segments)
     }
-
-    if (typeof d.progress === 'number') setOverallProgress(Math.max(0, Math.min(1, d.progress)))
-    else if (typeof d.overallProgress === 'number') setOverallProgress(Math.max(0, Math.min(1, d.overallProgress)))
-    if (typeof d.overallEtaSec === 'number') setOverallEtaSec(d.overallEtaSec)
-    if (typeof d.detectedDurationSec === 'number') setDetectedDurationSec(d.detectedDurationSec)
-    if (Array.isArray(d.clips)) setClips(d.clips)
-
-    const statusNow = String(d?.status || d?.phase || '').toLowerCase()
-    if (statusNow === 'done') {
-      setOverallProgress(1)
-      setShowPreview(true);
-      (async () => {
-          try {
-            const uid = auth.currentUser?.uid || (user as any)?.id || (user as any)?.uid
-            if (uid) {
-              const ref = doc(firestore, 'users', uid)
-              const currentUsed = (userDoc?.rendersUsed ?? 0) + 1
-              await updateDoc(ref, { rendersUsed: currentUsed, updatedAt: serverTimestamp() })
-              setUserDoc((prev: any) => ({ ...(prev || {}), rendersUsed: currentUsed }))
-            }
-          } catch (e) {
-            console.warn('[billing] failed to update rendersUsed', e)
+    const st = String(d.status || '').toLowerCase()
+    if (st === 'done') {
+      setStatus('done')
+      setShowPreview(true)
+      ;(async () => {
+        try {
+          const uid = auth.currentUser?.uid || (user as any)?.id || (user as any)?.uid
+          if (uid) {
+            const ref = doc(firestore, 'users', uid)
+            const currentUsed = (userDoc?.rendersUsed ?? 0) + 1
+            await updateDoc(ref, { rendersUsed: currentUsed, updatedAt: serverTimestamp() })
+            setUserDoc((prev: any) => ({ ...(prev || {}), rendersUsed: currentUsed }))
           }
+        } catch (e) {
+          console.warn('[billing] failed to update rendersUsed', e)
+        }
       })()
     }
-
-    if (statusNow === 'error') {
-      setErrorMessage(d.error || d.message || 'Processing error')
+    if (st === 'error') {
+      setErrorMessage(d.error?.message || d.message || 'Processing error')
     }
   }
 
