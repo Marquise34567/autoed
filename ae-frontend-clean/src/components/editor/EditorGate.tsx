@@ -148,9 +148,22 @@ export default function EditorGate() {
           </div>
         )}
 
-        {/* Render the editor full screen — EditorClientV2/EditorShell handle internal layout */}
-        <div className="w-full">
-          <EditorClientV2 />
+        {/* Render pipeline and subscription card together in a single premium glass box */}
+        <div className="w-full flex items-center justify-center px-4">
+          <div className="w-full max-w-5xl p-6 rounded-3xl bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] border border-white/6 backdrop-blur-md shadow-2xl flex gap-6">
+            <div className="flex-1">
+              <EditorClientV2 compact />
+            </div>
+            <aside className="w-80">
+              <div className="p-4 rounded-2xl bg-[rgba(10,12,15,0.6)] border border-white/6">
+                {userDoc ? (
+                  <SubscriptionCard user={userDoc} />
+                ) : (
+                  <div className="text-sm text-white/60">Subscription info unavailable</div>
+                )}
+              </div>
+            </aside>
+          </div>
         </div>
 
         {/* Floating subscription card removed — Sidebar renders the single SubscriptionCard inside the editor */}

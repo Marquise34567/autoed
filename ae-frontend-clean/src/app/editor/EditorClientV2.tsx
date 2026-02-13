@@ -32,7 +32,7 @@ import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
 type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | 'done' | 'error' | 'hook_selecting' | 'cut_selecting' | 'pacing'
 
-export default function EditorClientV2() {
+export default function EditorClientV2({ compact }: { compact?: boolean } = {}) {
   if (!isFirebaseConfigured()) {
     return (
       <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center px-4">
@@ -342,37 +342,43 @@ export default function EditorClientV2() {
     prevPlanRef.current = newPlan
   }, [userDoc])
 
-  return (
-    <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl p-6">
-        <div className="rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md">
-          <h2 className="text-xl font-semibold mb-4">Editor Pipeline</h2>
+  const card = (
+    <div className="w-full max-w-2xl p-6">
+      <div className="rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md shadow-xl">
+        <h2 className="text-xl font-semibold mb-4">Editor Pipeline</h2>
 
-          <div className="mb-6">
-            <PipelineStepper current={status} />
-          </div>
+        <div className="mb-6">
+          <PipelineStepper current={status} />
+        </div>
 
-          <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-white/70">Status</div>
-                <div className="font-semibold text-white">{status}</div>
-                <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
-              </div>
+        <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white/70">Status</div>
+              <div className="font-semibold text-white">{status}</div>
+              <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
+            </div>
 
-              <div className="text-right">
-                <div className="text-sm text-white/70">Progress</div>
-                <div className="text-lg font-semibold text-white">{Math.round((overallProgress || 0) * 100)}%</div>
-                <div className="text-xs text-white/60 mt-1">{overallEtaSec ? `${Math.round(overallEtaSec)}s ETA` : ''}</div>
-              </div>
+            <div className="text-right">
+              <div className="text-sm text-white/70">Progress</div>
+              <div className="text-lg font-semibold text-white">{Math.round((overallProgress || 0) * 100)}%</div>
+              <div className="text-xs text-white/60 mt-1">{overallEtaSec ? `${Math.round(overallEtaSec)}s ETA` : ''}</div>
             </div>
           </div>
+        </div>
 
-          <div className="mt-4 flex gap-2">
-            <button onClick={reset} className="px-3 py-2 bg-red-600 rounded">Reset</button>
-          </div>
+        <div className="mt-4 flex gap-2">
+          <button onClick={reset} className="px-3 py-2 bg-red-600 rounded">Reset</button>
         </div>
       </div>
+    </div>
+  )
+
+  if (compact) return card
+
+  return (
+    <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
+      {card}
     </div>
   )
 }
