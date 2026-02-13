@@ -422,127 +422,36 @@ export default function EditorClientV2() {
   }, [userDoc])
 
   return (
-    <EditorShell>
-      <div className="min-h-screen flex items-start justify-center p-6">
-        <div className="w-full max-w-7xl p-6 sm:p-8">
-          <div className="w-full rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 sm:p-8 backdrop-blur-md shadow-2xl">
-            {/* inner container to create big glass card */}
-            
-          <EditorHeader status={status} />
-          <div className="h-px bg-white/6 my-3" />
+    <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-2xl p-6">
+        <div className="rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md">
+          <h2 className="text-xl font-semibold mb-4">Editor Pipeline</h2>
 
-          <TopToolbar />
+          <div className="mb-6">
+            <PipelineStepper current={status} />
+          </div>
 
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-3">
-              <LeftMediaPanel onPickClick={openFilePicker} fileInputRef={fileInputRef} onFileChange={handleFileSelected} media={clips} />
-            </div>
-
-            <div className="lg:col-span-6">
-              <CenterPreviewPanel status={status}>
-                {/* keep the existing upload and analysis components intact inside preview */}
-                <div className="w-full h-full flex flex-col gap-4">
-                  <div>
-                    <input
-                      type="file"
-                      accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv"
-                      hidden
-                      ref={fileInputRef}
-                      onChange={handleFileSelected}
-                    />
-                    <UploadCTA onPickClick={openFilePicker} onFileChange={handleFileSelected} />
-                  </div>
-
-                  <VideoAnalysisPanel status={status} overallProgress={overallProgress} detectedDurationSec={detectedDurationSec} />
-
-                  <div>
-                    <PipelineStepper current={status} />
-                    <div className="mt-4">
-                      <ProgressPanel pct={overallProgress} eta={overallEtaSec} />
-                    </div>
-                  </div>
-                </div>
-              </CenterPreviewPanel>
-
-              <div className="mt-4">
-                <TimelinePanel clips={clips} />
+          <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-white/70">Status</div>
+                <div className="font-semibold text-white">{status}</div>
+                <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
               </div>
-            </div>
 
-            <div className="lg:col-span-3">
-              <RightInspectorPanel status={status} overallProgress={overallProgress} onGenerate={() => { /* placeholder */ }}>
-                <div className="mt-2">
-                  {userDoc ? (
-                    <SubscriptionCard user={userDoc} />
-                  ) : (
-                    <div className="text-sm text-white/60">Subscription info unavailable</div>
-                  )}
-                </div>
-              </RightInspectorPanel>
+              <div className="text-right">
+                <div className="text-sm text-white/70">Progress</div>
+                <div className="text-lg font-semibold text-white">{Math.round((overallProgress || 0) * 100)}%</div>
+                <div className="text-xs text-white/60 mt-1">{overallEtaSec ? `${Math.round(overallEtaSec)}s ETA` : ''}</div>
+              </div>
             </div>
           </div>
 
-          {popup && (
-            <NotificationPopup title={popup.title} lines={popup.lines} onClose={() => setPopup(null)} />
-          )}
+          <div className="mt-4 flex gap-2">
+            <button onClick={reset} className="px-3 py-2 bg-red-600 rounded">Reset</button>
+          </div>
         </div>
       </div>
     </div>
-
-      {/* Preview modal that pops up when download is ready */}
-      {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="max-w-2xl w-full p-6 bg-linear-to-br from-[#071018]/80 via-[#0b0f14]/70 to-[#071018]/80 rounded-2xl border border-white/6 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white text-xl font-semibold">Your download is ready</h3>
-              <button className="text-white/60" onClick={()=>setShowPreview(false)}>Close</button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-              <div className="md:col-span-2 bg-black/80 rounded overflow-hidden">
-                {previewLoading && (
-                  <div className="p-6 text-sm text-white/70">Generating secure preview linkâ€¦</div>
-                )}
-                {previewError && (
-                  <div className="p-6 text-sm text-red-300">{previewError}</div>
-                )}
-                {previewUrl && !previewLoading && !previewError && (
-                  <video src={previewUrl} controls className="w-full h-auto bg-black" />
-                )}
-              </div>
-
-              <div className="md:col-span-1 flex flex-col gap-3">
-                <div className="p-4 rounded-lg bg-[rgba(255,255,255,0.02)] border border-white/6">
-                  <div className="text-sm text-white/70">File</div>
-                  <div className="text-md font-semibold text-white truncate">{clips[0]?.name || 'Edited video'}</div>
-                  <div className="text-xs text-white/60 mt-1">{clips[0]?.duration ? `${Math.round(clips[0].duration)}s` : ''}</div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={triggerDownload}
-                    className="w-full inline-flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white font-semibold shadow-lg"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l4-4m-4 4-4-4M21 21H3" />
-                    </svg>
-                    Download file
-                  </button>
-
-                  <button
-                    onClick={copyDownloadLink}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/6 text-white"
-                  >
-                    Copy download link
-                  </button>
-
-                  <button onClick={()=>setShowPreview(false)} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-transparent border border-white/6 text-white/70">Done</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </EditorShell>
   )
 }
