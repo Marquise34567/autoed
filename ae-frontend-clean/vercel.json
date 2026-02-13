@@ -1,14 +1,12 @@
 {
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/next" }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://remarkable-comfort-production-4a9a.up.railway.app/api/:path*"
     }
-  ]
-}
-{
-  "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/next" }
   ]
 }
