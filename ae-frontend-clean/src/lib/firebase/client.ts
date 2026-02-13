@@ -1,10 +1,8 @@
-"use client";
-
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-// ✅ Firebase config (must exist in Vercel env vars)
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
@@ -14,14 +12,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// ✅ Initialize app safely (avoid duplicate apps)
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+function assertEnv() {
+  const missing = Object.entries(firebaseConfig)
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
 
-// ✅ Auth
+  if (missing.length) {
+    throw new Error(
+      `Missing Firebase env vars: ${missing.join(", ")}`
+    );
+  }
+}
+
+assertEnv();
+
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-
-// ✅ Firestore — FORCE long polling (fixes "client is offline")
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-});
+export const db = getFirestore(app);
+export const storage = getStorage(app);

@@ -11,3 +11,8 @@ renders
 *.mp4
 *.mov
 *.mkv
+*.log
+.env.*.local
+coverage
+tsconfig.tsbuildinfo
+disabled-server
