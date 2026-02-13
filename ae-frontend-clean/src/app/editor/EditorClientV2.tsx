@@ -103,67 +103,15 @@ export default function EditorClientV2() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
       body: JSON.stringify({ jobId }),
     })
-    const data = await safeJson(resp)
-    if (!resp.ok) {
-      throw new Error(data?.error || 'Failed to generate download URL')
-    }
-    if (!data?.url) throw new Error('Missing download URL')
-    return data.url as string
+    const j = await safeJson(resp)
+    if (!resp.ok) throw new Error(j?.error || 'Failed to generate download URL')
+    if (!j?.url) throw new Error('Missing download URL')
+    return j.url
   }
-
-  const openDownloadInNewTab = async () => {
-    try {
-      const url = await fetchDownloadUrl()
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } catch (e: any) {
-      console.error(e)
-      try { alert(e?.message || 'Failed to open download') } catch (_) {}
-    }
-  }
-  const triggerDownload = async () => {
-    try {
-      const url = await fetchDownloadUrl()
-      window.location.href = url
-    } catch (e: any) {
-      console.error(e)
-      try { alert(e?.message || 'Failed to download') } catch (_) {}
-    }
-  }
-
-  const copyDownloadLink = async () => {
-    try {
-      const url = await fetchDownloadUrl()
-      await navigator.clipboard.writeText(url)
-    } catch (e: any) {
-      console.error(e)
-      try { alert(e?.message || 'Failed to copy link') } catch (_) {}
-    }
-  }
-
-  useEffect(()=>{
-    let unsub = () => {}
-    try {
-      unsub = auth.onAuthStateChanged(async (u)=>{
-        if (!u) { setUserDoc(null); return }
-                  try {
-                    const userData = await getOrCreateUserDoc(u.uid)
-                    if (userData) setUserDoc(userData)
-                    else setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-                  } catch (e) {
-                    console.warn('failed to load or create user doc', e)
-                    setUserDoc({ uid: u.uid, plan: 'free', rendersLimit: 12, rendersUsed: 0 })
-                  }
-      })
-    } catch (e) {
-      console.warn('auth listener failed', e)
-    }
-    return ()=>{ try { unsub() } catch (_) {} }
-  }, [])
 
   function openFilePicker() {
-    console.log('[upload] button clicked')
+    try { console.log('[upload] button clicked') } catch (_) {}
     if (!fileInputRef.current) {
-      console.error('[upload] fileInputRef is null — input not mounted or ref not attached')
       try { alert('Unable to open file picker — please reload the page and try.') } catch (_) {}
       return
     }
@@ -171,63 +119,36 @@ export default function EditorClientV2() {
     fileInputRef.current?.click()
   }
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (!f) return
-
-    console.log('[upload] selected:', f.name, f.type)
-
-    const extOk = /\.mp4$/i.test(f.name) || /\.mov$/i.test(f.name) || /\.mkv$/i.test(f.name)
-    const mimeOk = f.type === 'video/mp4' || f.type === 'video/quicktime' || f.type === 'video/x-matroska'
-
-    if (!extOk && !mimeOk) {
-      setErrorMessage('Only MP4, MOV, and MKV files are supported. Please select a supported file type.')
-      setStatus('error')
-      e.currentTarget.value = ''
+  async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0]
+    if (!selected) {
+      try { event.currentTarget.value = '' } catch (_) {}
       return
     }
-
-    setErrorMessage(undefined)
-    const input = e.currentTarget
-    try { input.value = '' } catch (_) {}
-    await startEditorPipeline(f)
+    await startEditorPipeline(selected)
   }
 
-  useEffect(() => {
-    if (status === 'analyzing' && overallProgress === 0) {
-      setOverallProgress(0.01)
-    }
-  }, [status])
-
-  const handleFile = async (file?: File) => {
-    if (!file) return
-    setErrorMessage(undefined)
-    setStatus('uploading')
-    setOverallProgress(0)
-
+  async function handleFile(file: File) {
     try {
-      const onProgress = (pct: number) => setOverallProgress(pct / 100 * 0.2)
+      setStatus('uploading')
+      setOverallProgress(0)
+      setErrorMessage(undefined)
+      const onProgress = (pct: number) => {
+        try { setOverallProgress(Math.max(0, Math.min(1, pct))) } catch (_) {}
+      }
       const { storagePath } = await uploadVideoToStorage(file, onProgress)
-
-      const currentUser = auth.currentUser
-      if (!currentUser) throw new Error('Not signed in')
-      const idToken = await currentUser.getIdToken()
-
-      setStatus('analyzing')
-      setOverallProgress(0.25)
       const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: storagePath }),
       })
       const createJson = await safeJson(createResp)
-      const jid = createJson.jobId
-      setJobId(jid)
-
-      // start polling job status from backend
-      startJobListening(jid)
+      if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
+      setJobId(createJson.jobId)
+      startJobListening(createJson.jobId)
+      setStatus('analyzing')
     } catch (e: any) {
-      console.error(e)
+      console.error('[upload] error', e)
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')
     }
