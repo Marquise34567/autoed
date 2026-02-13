@@ -40,6 +40,23 @@ app.options('*', cors(corsOptions))
 app.get('/health', (_req, res) => res.json({ ok: true }))
 app.get('/', (_req, res) => res.json({ message: 'autoed-backend-ready' }))
 
+// Minimal userdoc route expected by frontend
+app.get('/api/userdoc', (req, res) => {
+  try {
+    // If auth is required in future, respond 401 with JSON
+    const auth = req.headers && req.headers.authorization
+    if (auth === 'required') {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    // Return a simple JSON payload so frontend no longer receives HTML 404
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('/api/userdoc error:', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Jobs route for frontend POSTs
 app.post('/jobs', async (req, res) => {
   try {
