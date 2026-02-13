@@ -7,6 +7,7 @@ import { EDITOR_ROUTE } from '@/lib/routes'
 import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 import { getIdToken } from 'firebase/auth'
 import { Logo } from '@/components/Logo';
+import { safeJson } from '@/lib/client/safeJson';
 import { PLANS, type PlanId } from '@/config/plans';
 import { validateReturnTo } from '@/lib/client/returnTo';
 
@@ -52,16 +53,16 @@ function CheckoutContent() {
         }),
       });
 
-      const data = await response.json();
-
       if (response.status === 401) {
         setError('Please sign in to upgrade')
         setIsLoading(false)
         return
       }
 
-      if (!response.ok || !data.url) {
-        setError(data.error || 'Checkout failed, try again')
+      const data = await safeJson(response);
+
+      if (!data || !data.url) {
+        setError(data?.error || 'Checkout failed, try again')
         setIsLoading(false)
         return
       }

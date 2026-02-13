@@ -23,8 +23,8 @@ export async function startDownload(jobId: string) {
   })
 
   if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}))
-    throw new Error(body?.error || 'Failed to generate download URL')
+    const text = await resp.text().catch(() => '')
+    throw new Error(`API Error ${resp.status}: ${text}`)
   }
 
   const data = await resp.json()

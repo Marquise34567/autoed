@@ -28,7 +28,13 @@ export function PendingSubscriptionBanner() {
 
     // Check billing status API for pending verification
     fetch('/api/billing/status')
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '')
+          throw new Error(`API Error ${res.status}: ${txt}`)
+        }
+        return res.json()
+      })
       .then(data => {
         if (data.ok && data.isPending) {
           setIsPending(true);

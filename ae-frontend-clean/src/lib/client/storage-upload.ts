@@ -35,24 +35,8 @@ export async function uploadVideoToStorage(
   })
 
   if (!uploadUrlResponse.ok) {
-    let errorMessage = `Failed to get upload URL: ${uploadUrlResponse.statusText}`
-    try {
-      const errorData = await uploadUrlResponse.json()
-      console.error('[storage-upload] Error response:', errorData)
-      errorMessage = errorData.error
-      if (errorData.details) {
-        errorMessage += ` - ${errorData.details}`
-      }
-      if (errorData.missingEnv?.length > 0) {
-        errorMessage += ` [Missing env: ${errorData.missingEnv.join(', ')}]`
-      }
-      if (errorData.bucketExists === false) {
-        errorMessage += ` [Bucket does not exist]`
-      }
-    } catch (e) {
-      console.error('[storage-upload] Failed to parse error response:', e)
-    }
-    throw new Error(errorMessage)
+    const text = await uploadUrlResponse.text().catch(() => '')
+    throw new Error(`API Error ${uploadUrlResponse.status}: ${text}`)
   }
 
   let signedUrl: string

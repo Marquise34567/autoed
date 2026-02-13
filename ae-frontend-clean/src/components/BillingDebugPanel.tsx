@@ -45,7 +45,8 @@ export function BillingDebugPanel() {
         setBillingStatus(data);
         setMessage('Status loaded');
       } else {
-        setMessage(`Error: ${res.status}`);
+        const text = await res.text().catch(() => '')
+        setMessage(`API Error ${res.status}: ${text}`);
       }
     } catch (err) {
       setMessage(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -66,8 +67,8 @@ export function BillingDebugPanel() {
         setMessage('Activated! Refreshing...');
         await refreshStatus();
       } else {
-        const data = await res.json();
-        setMessage(`Error: ${data.error}`);
+        const text = await res.text().catch(() => '')
+        setMessage(`API Error ${res.status}: ${text}`);
       }
     } catch (err) {
       setMessage(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -88,8 +89,8 @@ export function BillingDebugPanel() {
         setMessage('Reset! Refreshing...');
         await refreshStatus();
       } else {
-        const data = await res.json();
-        setMessage(`Error: ${data.error}`);
+        const text = await res.text().catch(() => '')
+        setMessage(`API Error ${res.status}: ${text}`);
       }
     } catch (err) {
       setMessage(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
