@@ -28,7 +28,10 @@ type Status = 'idle' | 'uploading' | 'analyzing' | 'selecting' | 'rendering' | '
 export default function EditorClientV2() {
   const { user, authReady } = useAuth()
   const router = useRouter()
-  try { console.log("Navigator online:", navigator.onLine) } catch (_) {}
+  // moved navigator access into an effect to avoid module-scope window access
+  useEffect(() => {
+    try { console.log('Navigator online:', navigator.onLine) } catch (_) {}
+  }, [])
 
   const [userDoc, setUserDoc] = useState<any | null>(null)
   const [popup, setPopup] = useState<{ title: string; lines: string[] } | null>(null)
@@ -41,6 +44,7 @@ export default function EditorClientV2() {
   const [jobId, setJobId] = useState<string | undefined>()
   const esRef = useRef<EventSource | null>(null)
   const isTerminalRef = useRef<boolean>(false)
+  const startedRef = useRef<boolean>(false)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | undefined>()
@@ -49,8 +53,28 @@ export default function EditorClientV2() {
   const pollRef = useRef<number | null>(null)
 
   async function startEditorPipeline(file: File) {
-    console.log('[pipeline] startEditorPipeline:', file.name, file.type)
-    await handleFile(file)
+    if (!authReady) {
+      console.warn('[pipeline] auth not ready; aborting start')
+      try { setErrorMessage('Waiting for authentication; please try again') } catch (_) {}
+      return
+    }
+    const uid = user?.id || auth.currentUser?.uid
+    if (!uid) {
+      console.warn('[pipeline] no user available; cannot start pipeline')
+      try { setErrorMessage('Please sign in to start processing') } catch (_) {}
+      return
+    }
+    if (startedRef.current) {
+      console.warn('[pipeline] already started; skipping')
+      return
+    }
+    startedRef.current = true
+    try {
+      console.log('[pipeline] startEditorPipeline:', file.name, file.type)
+      await handleFile(file)
+    } finally {
+      startedRef.current = false
+    }
   }
 
   const fetchDownloadUrl = async () => {
@@ -393,6 +417,7 @@ export default function EditorClientV2() {
     setPreviewError(undefined)
     setPreviewLoading(false)
     isTerminalRef.current = false
+    startedRef.current = false
     if (esRef.current) { try { esRef.current.close() } catch (_) {} ; esRef.current = null }
     if (pollRef.current) { try { clearTimeout(pollRef.current) } catch (_) {} ; pollRef.current = null }
   }

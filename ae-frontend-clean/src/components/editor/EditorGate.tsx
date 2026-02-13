@@ -53,7 +53,7 @@ export default function EditorGate() {
       <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center px-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full border-4 border-white/20 border-t-blue-500 h-8 w-8"></div>
-          <p className="mt-4 text-white/60">Loading auth...</p>
+          <p className="mt-4 text-white/60">Loading editor…</p>
           {process.env.NODE_ENV === 'development' && (
             <pre className="mt-3 text-xs text-white/60">{`authReady: ${String(authReady)}\nuser: ${user?.id ?? 'null'}\nurl: ${typeof window !== 'undefined' ? window.location.href : ''}`}</pre>
           )}
@@ -68,7 +68,7 @@ export default function EditorGate() {
       <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center px-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full border-4 border-white/20 border-t-blue-500 h-8 w-8"></div>
-          <p className="mt-4 text-white/60">Redirecting to sign in...</p>
+          <p className="mt-4 text-white/60">Please log in again</p>
           {process.env.NODE_ENV === 'development' && (
             <pre className="mt-3 text-xs text-white/60">{`authReady: ${String(authReady)}\nuser: ${user?.id ?? 'null'}\nurl: ${typeof window !== 'undefined' ? window.location.href : ''}`}</pre>
           )}
