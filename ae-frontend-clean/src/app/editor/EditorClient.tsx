@@ -20,7 +20,8 @@ import type { PlanId } from "@/config/plans";
 import { trackPostHogEvent, trackPlausibleEvent } from "@/lib/analytics/client";
 import { uploadVideoToStorage } from "@/lib/client/storage-upload";
 import { safeJson } from '@/lib/client/safeJson';
-import { API_BASE } from '@/lib/api';
+import { API_BASE as CENTRAL_API_BASE } from '@/lib/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 
 // Temporary type stubs for missing server types
 type JobStatusResponse = any
@@ -83,6 +84,7 @@ export default function EditorClientPage() {
   const uploadTrackedRef = useRef(false);
   const generateTrackedRef = useRef(false);
   const clipGeneratedTrackedRef = useRef(false);
+  const pollRef = useRef<number | null>(null);
   const [settings, setSettings] = useState<GenerateSettings>({
     clipLengths: [30, 45],
     numClips: 3,
@@ -112,11 +114,41 @@ export default function EditorClientPage() {
       if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
       setJobId(createJson.jobId)
       setJobStatus('QUEUED')
+      // start polling job status every 2s
+      startJobListening(createJson.jobId)
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Upload failed')
       setAnalyzing(false)
     }
+  }
+
+  const startJobListening = (jid: string) => {
+    if (!jid) return
+    try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
+        if (!r.ok) {
+          if (r.status === 404) return
+          console.warn('[poll] received', r.status)
+          return
+        }
+        const job = await r.json()
+        if (!job) return
+        const prog = typeof job.progress === 'number' ? job.progress : (typeof job.overallProgress === 'number' ? job.overallProgress : 0)
+        setProgressStep(Math.round(prog * 100))
+        setJobStatus(job.status || job.phase || '')
+        if ((job.status || job.phase || '').toLowerCase() === 'done') {
+          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          setGenerationDone(true)
+        }
+      } catch (e) {
+        console.warn('[poll] fetch error', e)
+      }
+    }
+    tick()
+    pollRef.current = setInterval(tick, 2000) as unknown as number
   }
 
   async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {

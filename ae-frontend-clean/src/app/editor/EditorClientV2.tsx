@@ -19,7 +19,9 @@ import { useAuth } from '@/lib/auth/useAuth'
 import { requirePremium } from '@/lib/subscription'
 import { useRouter } from 'next/navigation'
 import { safeJson } from '@/lib/client/safeJson'
-import { API_BASE } from '@/lib/api'
+// Use the explicit env var as requested; fallback to the central API_BASE if available
+import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
@@ -208,12 +210,8 @@ export default function EditorClientV2() {
       const jid = createJson.jobId
       setJobId(jid)
 
-      startJobListening(jid, async () => {
-        try {
-          const u = auth.currentUser
-          return u ? await u.getIdToken() : null
-        } catch (e) { return null }
-      })
+      // start polling job status from backend
+      startJobListening(jid)
     } catch (e: any) {
       console.error(e)
       setErrorMessage(e?.message || 'Upload failed')
@@ -221,107 +219,38 @@ export default function EditorClientV2() {
     }
   }
 
-  const startJobListening = (jid: string, getTokenForSSE?: () => Promise<string | null>) => {
+  const startJobListening = (jid: string) => {
     if (!jid) return
-    try {
-      if (esRef.current) {
-        try { esRef.current.close() } catch (_) {}
-        esRef.current = null
-      }
-      let retries = 0
-      const maxRetries = 5
-      const backoffs = [500, 1000, 2000, 4000, 8000]
-      const lastMessageAt = { current: Date.now() }
-      const receivedAny = { current: false }
-      let reconnectTimer: number | null = null
-      let livenessTimer: number | null = null
+    // Clear any existing poll
+    try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
 
-      const connect = async () => {
-        if (esRef.current) try { esRef.current.close() } catch (_) {}
-        let url = `${API_BASE}/api/jobs/${jid}/events`
-        if (process.env.NODE_ENV === 'development') {
-          try {
-            const token = await (typeof getTokenForSSE === 'function' ? getTokenForSSE() : null)
-            if (token) url += `?token=${encodeURIComponent(token)}`
-          } catch (_) {}
-        }
-        if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] connecting to ${url} (attempt ${retries + 1})`)
-        const es = new EventSource(url)
-        esRef.current = es
-
-        es.onmessage = (ev) => {
-          if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] message`, ev.data)
-          lastMessageAt.current = Date.now()
-          receivedAny.current = true
-          retries = 0
-          try {
-            const payload = JSON.parse(ev.data)
-            const job = payload && (payload.job ?? payload)
-            if (!job) return
-            applyJobUpdate(job)
-
-            const phase = String(job.phase || '').toLowerCase()
-            const terminal = phase === 'done' || phase === 'error'
-            if (terminal) {
-              isTerminalRef.current = true
-              try { es.close() } catch (_) {}
-              esRef.current = null
-              if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] terminal phase received: ${phase}`)
-            }
-          } catch (e) {
-            console.error('Invalid SSE data', e)
-          }
-        }
-
-        es.onerror = (err) => {
-          console.warn(`[sse:${jid}] EventSource error`, err)
-          try { es.close() } catch (_) {}
-          esRef.current = null
-
-          if (isTerminalRef.current) {
-            if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] terminal - ignoring error`)
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
+        if (!r.ok) {
+          if (r.status === 404) {
+            // Job not found yet; keep polling
             return
           }
-
-          if (retries < maxRetries) {
-            const wait = backoffs[Math.min(retries, backoffs.length - 1)] || 1000
-            if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] scheduling reconnect in ${wait}ms`)
-            reconnectTimer = setTimeout(() => { retries += 1; connect() }, wait) as unknown as number
-          } else {
-            if (!receivedAny.current) {
-              console.error(`[sse:${jid}] retries exhausted and no messages received`)
-              setErrorMessage('Connection to job stream failed')
-              setStatus('error')
-            } else {
-              if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] retries exhausted but messages were seen; falling back to polling`)
-              startPollingFallback(jid)
-            }
-          }
+          console.warn(`[poll:${jid}] received ${r.status}`)
+          return
         }
-
-        if (livenessTimer) try { clearInterval(livenessTimer) } catch (_) {}
-        livenessTimer = setInterval(() => {
-          const since = Date.now() - (lastMessageAt.current || 0)
-          if (since > 20000) {
-            if (process.env.NODE_ENV === 'development') console.warn(`[sse:${jid}] no messages for ${since}ms — reconnecting`)
-            try { es.close() } catch (_) {}
-            esRef.current = null
-            if (isTerminalRef.current) {
-              if (process.env.NODE_ENV === 'development') console.log(`[sse:${jid}] terminal - skipping liveness reconnect`)
-              return
-            }
-            if (reconnectTimer) try { clearTimeout(reconnectTimer) } catch (_) {}
-            retries += 1
-            if (retries <= maxRetries) connect()
-          }
-        }, 5000) as unknown as number
+        const job = await r.json()
+        if (!job) return
+        // Map backend job fields to UI
+        applyJobUpdate({ progress: job.progress, status: job.status, overallProgress: job.overallProgress, phase: job.phase, ...job })
+        const st = String(job.status || '').toLowerCase()
+        if (st === 'done' || st === 'error') {
+          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+        }
+      } catch (e) {
+        console.warn('[poll] fetch error', e)
       }
-
-      connect()
-    } catch (e) {
-      console.warn('[sse] failed to start, falling back to polling', e)
-      startPollingFallback(jid)
     }
+
+    // immediate tick then interval
+    tick()
+    pollRef.current = setInterval(tick, 2000) as unknown as number
   }
 
   const startPollingFallback = (jid: string) => {
@@ -375,13 +304,14 @@ export default function EditorClientV2() {
       else setStatus(p as Status)
     }
 
-    if (typeof d.overallProgress === 'number') setOverallProgress(Math.max(0, Math.min(1, d.overallProgress)))
+    if (typeof d.progress === 'number') setOverallProgress(Math.max(0, Math.min(1, d.progress)))
+    else if (typeof d.overallProgress === 'number') setOverallProgress(Math.max(0, Math.min(1, d.overallProgress)))
     if (typeof d.overallEtaSec === 'number') setOverallEtaSec(d.overallEtaSec)
     if (typeof d.detectedDurationSec === 'number') setDetectedDurationSec(d.detectedDurationSec)
     if (Array.isArray(d.clips)) setClips(d.clips)
 
-    const phaseNow = String(d?.phase || '').toLowerCase()
-    if (phaseNow === 'done') {
+    const statusNow = String(d?.status || d?.phase || '').toLowerCase()
+    if (statusNow === 'done') {
       setOverallProgress(1)
       setShowPreview(true);
       (async () => {
@@ -399,7 +329,7 @@ export default function EditorClientV2() {
       })()
     }
 
-    if (phaseNow === 'error') {
+    if (statusNow === 'error') {
       setErrorMessage(d.error || d.message || 'Processing error')
     }
   }
