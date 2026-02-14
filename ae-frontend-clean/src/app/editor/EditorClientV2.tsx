@@ -224,21 +224,24 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
     const tick = async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
+        console.log('Polling job:', jid)
+        const url = `${API_BASE}/api/jobs?id=${encodeURIComponent(jid)}`
+        const r = await fetch(url)
         if (!r.ok) {
           if (r.status === 404) return
           console.warn('[poll] status', r.status)
           return
         }
-        const j: JobResponse = await r.json()
+        const j: JobResponse & any = await r.json()
+        console.log('Job response:', j)
         if (!j) return
         setJobResp(j)
+
+        // Normalize progress: backend may use 0..1 or 0..100
         if (typeof j.progress === 'number') {
-          // normalize progress: backend may use 0..1 or 0..100
           const raw = j.progress
           const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
           setOverallProgress(frac)
-          // compute ETA if we have a job start time
           try {
             if (frac > 0 && jobStartRef.current) {
               const elapsedSec = (Date.now() - jobStartRef.current) / 1000
@@ -248,7 +251,36 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             }
           } catch (_) {}
         }
-        // map backend status to local status
+
+        const state = String(j.status || j.phase || '').toLowerCase()
+
+        if (state === 'processing') {
+          // update progress only
+          if (typeof j.progress === 'number') {
+            const raw = j.progress
+            const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
+            setOverallProgress(frac)
+          }
+          setStatus('analyzing')
+          return
+        }
+
+        if (state === 'done') {
+          // finalize
+          setOverallProgress(1)
+          setOverallEtaSec(0)
+          setStatus('done')
+          const resultUrl = j.resultUrl || j.result?.videoUrl || j.result?.url || j.result?.videoURL
+          if (resultUrl) {
+            setJobResp((prev) => ({ ...(prev || {}), status: j.status || 'done', result: { videoUrl: resultUrl } }))
+            setShowPreview(true)
+            setPreviewUrl(resultUrl)
+          }
+          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          return
+        }
+
+        // map other statuses
         const map: Record<string, Status> = {
           queued: 'analyzing',
           analyzing: 'analyzing',
@@ -257,15 +289,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           pacing: 'pacing',
           rendering: 'rendering',
           uploading: 'uploading_result',
-          done: 'done',
           error: 'error',
         }
-        setStatus(map[j.status] || 'analyzing')
-        if (j.status === 'done' || j.status === 'error') {
-          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
-          // clear ETA when finished
-          setOverallEtaSec(0)
-        }
+        setStatus(map[state] || 'analyzing')
       } catch (e) {
         console.warn('[poll] fetch error', e)
       }
