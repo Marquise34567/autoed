@@ -10,7 +10,7 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 export async function uploadVideoToStorage(
   file: File,
   onProgress?: (percent: number) => void
-): Promise<{ storagePath: string; signedUrl: string }> {
+): Promise<{ storagePath: string; uploadUrl: string }> {
   // Step 0: Validate file before uploading
   if (!file.type.startsWith('video/')) {
     throw new Error(`Invalid file type: ${file.type}. Must be a video file.`)
@@ -41,21 +41,21 @@ export async function uploadVideoToStorage(
     throw new Error(`API Error ${uploadUrlResponse.status}: ${text}`)
   }
 
-  let signedUrl: string
+  let uploadUrl: string
   let path: string
   try {
     const data = (await uploadUrlResponse.json()) as any
-    // Support both new { url, method, headers, storagePath } and legacy { signedUrl, path }
-    if (data.url) {
-      signedUrl = data.url
-      path = data.storagePath || data.path
-      console.log(`[storage-upload] ✓ Got signed URL (new format)`)
+    // Prefer the new `uploadUrl` or `url`, but support legacy `signedUrl` for compatibility.
+    if (data.uploadUrl || data.url) {
+      uploadUrl = data.uploadUrl || data.url
+      path = data.path || data.storagePath
+      console.log(`[storage-upload] ✓ Got upload URL (new format)`)
     } else if (data.signedUrl) {
-      signedUrl = data.signedUrl
+      uploadUrl = data.signedUrl
       path = data.path
       console.log(`[storage-upload] ✓ Got signed URL (legacy format)`)
     } else {
-      throw new Error('Missing signed URL in response')
+      throw new Error('Missing signed/upload URL in response')
     }
   } catch (e) {
     throw new Error(`Invalid response from ${API_BASE}/api/upload-url: ${e}`)
@@ -77,7 +77,7 @@ export async function uploadVideoToStorage(
     xhr.addEventListener("load", () => {
       // Successful upload
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({ storagePath: path, signedUrl });
+        resolve({ storagePath: path, uploadUrl });
         return
       }
 
@@ -87,7 +87,10 @@ export async function uploadVideoToStorage(
         return
       }
 
-      reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+      // Provide detailed failure info to aid debugging
+      const respText = xhr.responseText ? xhr.responseText.substring(0, 2000) : ''
+      console.error(`[storage-upload] upload failed status=${xhr.status} statusText=${xhr.statusText} response=${respText}`)
+      reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText} - ${respText}`));
     });
 
     xhr.addEventListener("error", () => {
@@ -103,8 +106,13 @@ export async function uploadVideoToStorage(
       reject(new Error("Upload was aborted"));
     });
 
-    xhr.open("PUT", signedUrl, true);
+    xhr.open("PUT", uploadUrl, true);
+    // Ensure Content-Type header matches the one used to sign the URL exactly
     xhr.setRequestHeader("Content-Type", file.type);
-    xhr.send(file);
+    try {
+      xhr.send(file);
+    } catch (err) {
+      reject(new Error(`Upload send error: ${String(err)}`))
+    }
   });
 }

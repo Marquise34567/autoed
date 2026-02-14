@@ -93,25 +93,36 @@ app.post('/api/upload-url', async (req, res) => {
       return res.status(500).json({ ok: false, error: init.error || 'Failed to initialize Firebase Admin' })
     }
 
-    const { filename, contentType } = req.body || {}
+    const { filename, contentType, pathPrefix } = req.body || {}
     if (!filename || !contentType) {
-      return res.status(400).json({ ok: false, error: 'Missing filename or contentType' })
+      return res.status(400).json({ ok: false, error: 'Missing required fields: filename and contentType' })
     }
 
     // sanitize filename
     const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
     const timestamp = Date.now()
-    const path = `uploads/${timestamp}-${safeName}`
+
+    // Optional path prefix (must be a simple folder-like segment), sanitize and strip dangerous chars
+    let prefix = ''
+    if (pathPrefix) {
+      prefix = String(pathPrefix).replace(/[^a-zA-Z0-9_\-\/]/g, '')
+      // remove leading/trailing slashes
+      prefix = prefix.replace(/^\/+|\/+$/g, '')
+      if (prefix) prefix = prefix + '/'
+    }
+
+    const path = `${prefix}uploads/${timestamp}-${safeName}`
 
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET
     const bucket = admin.storage().bucket()
     const file = bucket.file(path)
 
     const expiresInSeconds = 15 * 60 // 15 minutes
+    const expiresAt = Date.now() + expiresInSeconds * 1000
     const options = {
       version: 'v4',
       action: 'write',
-      expires: Date.now() + expiresInSeconds * 1000,
+      expires: expiresAt,
       contentType: contentType
     }
 
@@ -120,7 +131,8 @@ app.post('/api/upload-url', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Missing signed URL from Firebase' })
     }
 
-    return res.json({ ok: true, signedUrl, bucket: bucketName, path, expiresInSeconds })
+    // Return a clear, modern response shape: uploadUrl, path, expiresAt
+    return res.json({ ok: true, uploadUrl: signedUrl, path, expiresAt })
   } catch (err) {
     console.error('/api/upload-url error:', err && err.message ? err.message : err)
     return res.status(500).json({ ok: false, error: (err && err.message) ? err.message : String(err) })
