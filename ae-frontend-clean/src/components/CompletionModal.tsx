@@ -93,7 +93,7 @@ export default function CompletionModal({ jobId, videoUrl, onClose, onDownload }
     </div>
   )
 }
-import React, { useEffect, useRef } from 'react'
+// React hooks are already imported above; avoid duplicate imports
 
 interface Props {
   isOpen: boolean
