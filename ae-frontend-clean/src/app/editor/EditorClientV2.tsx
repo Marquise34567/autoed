@@ -232,14 +232,17 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           console.warn('[poll] status', r.status)
           return
         }
-        const j: JobResponse & any = await r.json()
-        console.log('Job response:', j)
-        if (!j) return
-        setJobResp(j)
+        const data: any = await r.json()
+        console.log('Job response:', data)
+        // backend returns { ok: true, job: { ... } }
+        if (!data?.job) return
+        const job: JobResponse & any = data.job
+        console.log('Polled status:', job.status)
+        setJobResp(job)
 
         // Normalize progress: backend may use 0..1 or 0..100
-        if (typeof j.progress === 'number') {
-          const raw = j.progress
+        if (typeof job.progress === 'number') {
+          const raw = job.progress
           const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
           setOverallProgress(frac)
           try {
@@ -252,12 +255,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           } catch (_) {}
         }
 
-        const state = String(j.status || j.phase || '').toLowerCase()
+        const state = String(job.status || job.phase || '').toLowerCase()
 
         if (state === 'processing') {
           // update progress only
-          if (typeof j.progress === 'number') {
-            const raw = j.progress
+          if (typeof job.progress === 'number') {
+            const raw = job.progress
             const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
             setOverallProgress(frac)
           }
@@ -270,12 +273,20 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           setOverallProgress(1)
           setOverallEtaSec(0)
           setStatus('done')
-          const resultUrl = j.resultUrl || j.result?.videoUrl || j.result?.url || j.result?.videoURL
+          const resultUrl = job.resultUrl || job.result?.videoUrl || job.result?.url || job.result?.videoURL
           if (resultUrl) {
-            setJobResp((prev) => ({ ...(prev || {}), status: j.status || 'done', result: { videoUrl: resultUrl } }))
+            setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
             setShowPreview(true)
             setPreviewUrl(resultUrl)
           }
+          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          return
+        }
+
+        if (state === 'error') {
+          const msg = job.errorMessage || job.error?.message || job.message
+          setStatus('error')
+          setErrorMessage(msg || 'Processing error')
           if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
           return
         }
