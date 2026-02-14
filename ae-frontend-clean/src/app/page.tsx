@@ -42,9 +42,20 @@ export default function Home() {
           <span className="text-base sm:text-lg font-semibold tracking-tight">AutoEditor</span>
           <BetaBadge />
         </div>
-        <MobileNav>
-          <UserNav />
-        </MobileNav>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-3">
+            <SignupButton className="rounded-full px-4 py-2 bg-linear-to-br from-white/95 to-white/80 text-black font-semibold" />
+            <Link
+              href={LOGIN_ROUTE}
+              className="rounded-full px-4 py-2 border border-white/10 text-white/80 hover:bg-white/5 transition-colors text-sm flex items-center justify-center"
+            >
+              Log in
+            </Link>
+          </div>
+          <MobileNav>
+            <UserNav />
+          </MobileNav>
+        </div>
       </header>
 
       <main className="relative z-10 overflow-x-hidden">
@@ -52,17 +63,7 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-wider text-white/70">Premium AI Auto-Editor</div>
           <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-slate-200/80 animate-fade-up fade-delay-1">We Built an Editor That Thinks Like Top Creators.</h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-white/70 animate-fade-up fade-delay-2">AutoEditor analyzes your footage, identifies the best moments, selects the perfect hook, and renders creator-ready clips with studio-grade audio enhancement.</p>
-          <div className="mt-6 flex justify-center gap-4 items-center">
-            <SignupButton
-              className="rounded-full px-6 py-3 bg-linear-to-br from-white/95 to-white/80 text-black font-semibold cta-animate animate-pulse-slow shadow-2xl"
-            />
-            <Link
-              href={LOGIN_ROUTE}
-              className="rounded-full px-5 py-2.5 border border-white/10 text-white/80 hover:bg-white/5 transition-colors text-sm flex items-center justify-center"
-            >
-              Log in
-            </Link>
-          </div>
+          <div className="mt-6" />
 
           <div className="mt-10 mx-auto max-w-4xl w-full px-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur card-entrance animate-fade-up fade-delay-3">
