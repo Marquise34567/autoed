@@ -28,12 +28,15 @@ export function UserNav() {
   if (user) {
     return (
       <div className="flex items-center gap-4">
-        <Link
-          href={EDITOR_ROUTE}
-          className="rounded-full border border-white/20 px-4 py-2 text-white/80 transition hover:border-white/40 hover:text-white"
-        >
-          Editor
-        </Link>
+        {/* Hide the Editor link when already on the editor page */}
+        {pathname !== '/editor' && (
+          <Link
+            href={EDITOR_ROUTE}
+            className="rounded-full px-4 py-2 text-white/90 transition hover:scale-[1.02]"
+          >
+            Editor
+          </Link>
+        )}
         <button
           onClick={async () => {
             try {
@@ -43,7 +46,7 @@ export function UserNav() {
               console.error('Logout failed:', err)
             }
           }}
-          className="rounded-full border border-white/20 px-4 py-2 text-xs text-white/70 transition hover:border-red-500/40 hover:text-red-400"
+          className="rounded-full px-4 py-2 text-sm text-white/80 border border-white/12 hover:bg-white/6 transition"
         >
           Sign out
         </button>
@@ -55,13 +58,13 @@ export function UserNav() {
     <div className="flex items-center gap-4">
       <Link
         href={EDITOR_ROUTE}
-        className="rounded-full border border-white/20 px-4 py-2 text-white/80 transition hover:border-white/40 hover:text-white"
+        className="rounded-full px-4 py-2 text-white/90 transition hover:scale-[1.02]"
       >
         Editor
       </Link>
       <Link
         href={LOGIN_ROUTE}
-        className="rounded-full border border-white/20 px-4 py-2 text-white/80 transition hover:border-white/40 hover:text-white"
+        className="rounded-full px-4 py-2 text-white/90 border border-white/12 transition hover:bg-white/6"
       >
         Sign in
       </Link>

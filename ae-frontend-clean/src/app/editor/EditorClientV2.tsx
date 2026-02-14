@@ -7,6 +7,7 @@ import JobDetails from '@/components/editor/JobDetails'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import NotificationPopup from '@/components/NotificationPopup'
 import PremiumLoader from '@/components/PremiumLoader'
+import ProcessingCard from '@/components/editor-v2/ProcessingCard'
 import CompletionModal from '@/components/CompletionModal'
 import { planFeatures } from '@/lib/plans'
 import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
@@ -499,8 +500,13 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
   const card = (
     <div className="w-full max-w-2xl p-6">
-      <div className={`rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md shadow-xl`}>
-        <h2 className="text-2xl font-bold mb-4">Editor Pipeline</h2>
+      <div className={`rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.65),rgba(7,9,15,0.5))] p-6 backdrop-blur-xl shadow-[0_24px_60px_rgba(2,6,23,0.6)]`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Editor Pipeline</h2>
+            <div className="text-xs text-white/60 mt-1">Retention-first AI editing</div>
+          </div>
+        </div>
 
         <div className="mb-4">
           <PipelineStepper current={status} />
@@ -509,7 +515,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         <div className="grid grid-cols-12 gap-6">
           {/* Left: upload + original preview */}
           <div className="col-span-7 space-y-4">
-            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
+            <div className="p-6 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6 hover:shadow-[0_12px_40px_rgba(124,58,237,0.06)] transition">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-white/70">Upload</div>
@@ -530,16 +536,16 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 <button
                   onClick={openFilePicker}
                   disabled={isUploading || (status !== 'idle' && status !== 'done')}
-                  className={`px-4 py-2 rounded-full font-semibold shadow transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/20 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white'}`}
+                  className={`px-4 py-2 rounded-full font-semibold transition shadow-md ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white hover:shadow-[0_8px_30px_rgba(124,58,237,0.24)]'}`}
                 >
                   {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Upload New' : 'Upload')}
                 </button>
 
                 {status === 'done' && (jobResp?.result?.videoUrl || jobId) && (
-                  <button onClick={() => handleDownload(jobId)} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Download</button>
+                  <button onClick={() => handleDownload(jobId)} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow-md hover:scale-[1.02]">Download</button>
                 )}
 
-                <button onClick={reset} className="px-3 py-2 rounded-lg border border-white/8 text-white/80">Reset</button>
+                <button onClick={reset} className="px-3 py-2 rounded-full border border-white/12 text-white/80 hover:bg-white/6 transition">Reset</button>
               </div>
 
               <div className="mt-3 text-xs text-white/60">Tips: MP4/MOV/WEBM supported — up to 1 GB.</div>
@@ -549,51 +555,50 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
               </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-              <div className="text-sm text-white/70">Original preview</div>
-              {originalUrl ? (
-                <video src={originalUrl} controls className="mt-3 w-full rounded-md bg-black" />
-              ) : (
-                <div className="mt-3 text-sm text-white/60">No file selected</div>
-              )}
+            <div className="p-4 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-white/70">Original</div>
+                <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Original</div>
+              </div>
+              <div className="mt-3 rounded-md overflow-hidden bg-black/60 h-44 flex items-center justify-center">
+                {originalUrl ? (
+                  <video src={originalUrl} controls className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-sm text-white/60">No file selected — thumbnail preview will appear here</div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right: progress, result preview, details */}
           <div className="col-span-5 space-y-4">
-            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-sm text-white/70">Processing Status</div>
-                  <div className="font-semibold text-white">{status === 'idle' ? 'Waiting for upload' : (status === 'uploading' ? 'Uploading' : status === 'analyzing' ? 'Analyzing full video' : status === 'hook' ? 'Selecting best hook (3–5s)' : status === 'cutting' ? 'Extracting highlights (5–10s)' : status === 'pacing' ? 'Optimizing pacing' : status === 'rendering' ? 'Rendering final video' : status === 'uploading_result' ? 'Uploading result' : status === 'done' ? 'Complete' : 'Error')}</div>
-                      <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
-                      {jobId && status !== 'idle' && status !== 'done' && status !== 'error' && (
-                        <div className="text-xs text-emerald-300 mt-1">ETA: {overallEtaSec > 0 ? `${Math.floor(overallEtaSec/60)}m ${overallEtaSec%60}s` : 'Estimating…'}</div>
-                      )}
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-white/70">Progress</div>
-                  <div className="text-lg font-semibold text-white">{Math.round((Array.isArray(jobResp?.progress) ? 0 : ((jobResp?.progress ?? overallProgress) || 0)) * (jobResp?.progress && jobResp.progress <= 1 ? 100 : 1))}%</div>
-                </div>
+              <ProcessingCard
+                status={status}
+                overallProgress={(jobResp?.progress ?? overallProgress) as any}
+                detectedDurationSec={detectedDurationSec}
+                overallEtaSec={overallEtaSec}
+                jobId={jobId}
+                jobResp={jobResp}
+                fileName={selectedFile ? selectedFile.name : jobResp?.result?.filename}
+                smartZoom={smartZoom}
+                errorMessage={errorMessage}
+              />
+            <div className="p-4 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-white/70">Result</div>
+                <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Rendered</div>
               </div>
-
-              <div className="mt-3">
-                <PremiumLoader status={status} progress={(jobResp?.progress ?? overallProgress) as any} />
-                <div className="mt-3">
-                  <ProgressBar value={ (jobResp?.progress ?? overallProgress) as any } />
-                </div>
-              </div>
-
-              {errorMessage && (
-                <div className="mt-3 p-3 rounded-md bg-red-700/20 border border-red-600 text-sm text-red-200">{errorMessage}</div>
-              )}
-            </div>
-
-            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-              <div className="text-sm text-white/70">Result</div>
               <div className="mt-3">
                 {status === 'done' && (jobResp?.result?.videoUrl || previewUrl) ? (
-                  <button onClick={() => setShowPreview(true)} className="px-4 py-2 rounded-full font-semibold shadow bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white">Open Preview</button>
+                  <div className="rounded-md overflow-hidden bg-black/60">
+                    <video src={jobResp?.result?.videoUrl || previewUrl} controls className="w-full h-40 object-cover" />
+                    <div className="p-3 flex items-center justify-between">
+                      <div className="text-sm text-white/80">Rendered output</div>
+                      <div>
+                        <button onClick={() => setShowPreview(true)} className="px-3 py-1 rounded-full bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white font-semibold">Open</button>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="text-sm text-white/60">Preview will be available when processing completes</div>
                 )}

@@ -87,45 +87,51 @@ export default function LoginForm({ initialMode }: { initialMode?: 'login' | 'si
 
   return (
     <div className="w-full max-w-lg mx-auto px-4">
-      <div className={`rounded-2xl sm:rounded-3xl border border-white/10 bg-linear-to-b from-white/5 to-white/0 p-6 sm:p-8 shadow-xl backdrop-blur transform transition-all duration-500 ease-out ${mounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}`}>
-        <div className="mb-6 sm:mb-8 text-center">
-          <img src="/favicon.svg" alt="AutoEditor" className="mx-auto h-10 w-auto mb-3" />
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/70 mx-auto">AutoEditor</div>
-          <h1 className="mt-4 sm:mt-6 text-2xl sm:text-3xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
-          <p className="mt-2 sm:mt-3 text-sm sm:text-base text-white/70">{mode === 'login' ? 'Sign in to access the editor and your projects' : 'Create an account to start transforming your videos'}</p>
+      <div className={`auth-card transform transition-all duration-500 ease-out ${mounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}`}>
+        <div className="auth-brand mb-4">
+          <img src="/favicon.svg" alt="AutoEditor" className="h-10 w-auto" />
+        </div>
+
+        <div className="auth-hero">
+          <div className="auth-badge">AutoEditor</div>
+          <h1 className="mt-4">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
+          <p>{mode === 'login' ? 'Sign in to access the editor and your projects' : 'Create an account to start transforming your videos'}</p>
         </div>
 
         {error && <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-red-300 text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-          <div>
+          <div className="input-row">
             <label className="block text-sm font-medium text-white/90 mb-2">Email Address</label>
-            <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@example.com" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base text-white placeholder-white/40" />
+            <svg className="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5L12 13L21 6.5" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@example.com" className="premium-input with-icon" />
           </div>
 
-          <div>
+          <div className="input-row">
             <label className="block text-sm font-medium text-white/90 mb-2">Password</label>
-            <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder={mode === 'login' ? 'Enter your password' : 'At least 6 characters'} className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base text-white placeholder-white/40" />
+            <svg className="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 17v-3" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="4" y="8" width="16" height="10" rx="2" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5"/></svg>
+            <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder={mode === 'login' ? 'Enter your password' : 'At least 6 characters'} className="premium-input with-icon" />
           </div>
 
           {mode === 'signup' && (
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">Confirm Password</label>
-              <input type="password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} placeholder="Re-enter your password" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base text-white placeholder-white/40" />
+              <input type="password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} placeholder="Re-enter your password" className="premium-input" />
             </div>
           )}
 
-          <button type="submit" disabled={isSubmitting} className="w-full rounded-full bg-white px-6 py-3.5 text-base font-semibold text-black">
-            {isSubmitting ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Sign In' : 'Create Account')}
-          </button>
+          <div className="auth-actions">
+            <button type="submit" disabled={isSubmitting} className={`premium-btn flex-1 text-center ${isSubmitting ? 'opacity-80' : ''}`}>
+              {isSubmitting ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Sign In' : 'Create Account')}
+            </button>
+            <button type="button" className="auth-secondary" onClick={()=>{ setMode(mode === 'login' ? 'signup' : 'login'); setError(null); }}>
+              {mode === 'login' ? 'Sign up' : 'Log in'}
+            </button>
+          </div>
         </form>
 
-        <div className="mt-6 text-center text-sm text-white/70">
-          {mode === 'login' ? (
-            <>Don't have an account? <button onClick={()=>{ setMode('signup'); setError(null); }} className="font-semibold">Sign up</button></>
-          ) : (
-            <>Already have an account? <button onClick={()=>{ setMode('login'); setError(null); }} className="font-semibold">Log in</button></>
-          )}
+        <div className="auth-legal">
+          By continuing you agree to our Terms of Service and Privacy Policy.
         </div>
       </div>
     </div>

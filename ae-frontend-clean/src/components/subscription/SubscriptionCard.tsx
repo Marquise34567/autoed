@@ -54,8 +54,11 @@ export default function SubscriptionCard({ user }:{ user: any }){
   return (
     <div className="w-full h-full relative rounded-3xl p-6 sm:p-6 bg-linear-to-br from-[#071018]/85 via-[#09101a]/75 to-[#071018]/85 border border-white/6 ring-1 ring-white/6 shadow-2xl backdrop-blur-md overflow-auto transition-transform duration-300 hover:-translate-y-1">
       {/* Premium badge */}
-      {plan !== 'free' && (
+      {/* Plan badge */}
+      {plan !== 'free' ? (
         <div className="absolute -top-3 -left-3 bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-xs text-white px-3 py-1 rounded-full shadow-2xl font-semibold ring-1 ring-white/8">PREMIUM</div>
+      ) : (
+        <div className="absolute -top-3 -left-3 bg-white/6 text-xs text-white px-3 py-1 rounded-full font-semibold ring-1 ring-white/8">FREE</div>
       )}
 
       <div className="flex items-center justify-between">
@@ -130,7 +133,7 @@ export default function SubscriptionCard({ user }:{ user: any }){
           type="button"
           onClick={handleSignOut}
           disabled={loading}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-3xl bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white font-semibold shadow-[0_8px_30px_rgba(99,102,241,0.18)]"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-3xl border border-white/12 bg-transparent text-white font-semibold hover:bg-white/6 transition"
         >
           {loading ? 'Signing out...' : 'Sign out'}
         </button>
