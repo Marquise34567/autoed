@@ -122,7 +122,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const resp = await fetch(`${API_BASE}/api/jobs?id=${encodeURIComponent(jobId)}`)
+    const path = `/api/jobs?id=${encodeURIComponent(jobId)}`
+    const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+    try { console.log('[fetchDownloadUrl] GET', fullUrl) } catch (_) {}
+    const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
     const data: any = await resp.json()
     if (!data?.job) throw new Error('Missing job data')
@@ -198,17 +201,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         return
       }
 
-      const current = auth.currentUser
-      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-      if (current) {
-        const t = await current.getIdToken(true)
-        headers['Authorization'] = `Bearer ${t}`
-      }
-
       console.log('[createJobWithFile] Creating job with', payload)
       console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
-
-      const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', headers, body: JSON.stringify(payload) })
+      const path = '/api/jobs'
+      const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+      try { console.log('[createJobWithFile] POST', fullUrl) } catch (_) {}
+      const resp = await apiFetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
       const j = (await safeJson(resp)) as CreateJobResponse
       if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
@@ -356,7 +354,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
+        const path = `/api/jobs/${jid}`
+        const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+        try { console.log('[startPollingFallback] GET', fullUrl) } catch (_) {}
+        const r = await apiFetch(path)
         if (!r.ok) {
           if (r.status >= 400 && r.status < 500 && r.status !== 404) {
             if (process.env.NODE_ENV === 'development') console.warn(`[poll:${jid}] received ${r.status}`)
@@ -493,8 +494,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   // Direct download handler: redirect browser to backend download endpoint
   const handleDownload = (jid?: string) => {
     if (!jid) return
-    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/jobs/${jid}/download`
-    try { window.location.href = url } catch (e) { console.warn('Download redirect failed', e) }
+    const path = `/api/jobs/${jid}/download`
+    const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+    try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
+    try { window.location.href = fullUrl } catch (e) { console.warn('Download redirect failed', e) }
   }
 
   // notify when user's plan upgrades/changes
