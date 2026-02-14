@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://remarkable-comfort-production-4a9a.up.railway.app/api/:path*"
+      "destination": "https://autoed-backend-production.up.railway.app/api/:path*"
     }
   ]
 }
