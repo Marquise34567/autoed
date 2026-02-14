@@ -440,6 +440,13 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     }
   }, [status, jobId])
 
+  // Direct download handler: redirect browser to backend download endpoint
+  const handleDownload = (jid?: string) => {
+    if (!jid) return
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/jobs/${jid}/download`
+    try { window.location.href = url } catch (e) { console.warn('Download redirect failed', e) }
+  }
+
   // notify when user's plan upgrades/changes
   const prevPlanRef = React.useRef<string | null>(null)
   useEffect(() => {
@@ -496,8 +503,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                   {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Upload New' : 'Upload')}
                 </button>
 
-                {status === 'done' && jobResp?.result?.videoUrl && (
-                  <a href={jobResp.result.videoUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Download</a>
+                {status === 'done' && (jobResp?.result?.videoUrl || jobId) && (
+                  <button onClick={() => handleDownload(jobId)} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow">Download</button>
                 )}
 
                 <button onClick={reset} className="px-3 py-2 rounded-lg border border-white/8 text-white/80">Reset</button>
