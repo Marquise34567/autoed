@@ -169,17 +169,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const onProgress = (pct: number) => {
         try { setOverallProgress(Math.round(pct)) } catch (_) {}
       }
-      const { storagePath } = await uploadVideoToStorage(file, onProgress)
+      const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
+      console.log(`Firebase upload complete: ${storagePath}`)
 
-      const payload = {
-        path: storagePath,
-        filename: file.name,
-        contentType: file.type,
-      }
+      const payload = { storagePath, downloadURL }
 
       // Validate before sending
-      if (!payload.path || !payload.filename || !payload.contentType) {
-        setErrorMessage('Missing required upload metadata (path, filename, or contentType)')
+      if (!payload.storagePath || !payload.downloadURL) {
+        setErrorMessage('Missing required upload metadata (storagePath or downloadURL)')
         setStatus('error')
         setIsUploading(false)
         return
@@ -192,10 +189,11 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         headers['Authorization'] = `Bearer ${t}`
       }
 
-      console.log('[createJobWithFile] POST', `${API_BASE}/api/jobs`, payload)
+      console.log('[createJobWithFile] Creating job with', payload)
 
       const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', headers, body: JSON.stringify(payload) })
-      const j = await safeJson(resp)
+      type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
+      const j = (await safeJson(resp)) as CreateJobResponse
       if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
       const jid = j.jobId || j.jobID || j.id
       setJobId(jid)

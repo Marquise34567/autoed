@@ -104,21 +104,24 @@ export default function EditorClientPage() {
         // map upload progress into step or progress UI; simple update to progressStep
         setProgressStep(Math.round(pct))
       }
-      const { storagePath } = await uploadVideoToStorage(file, onProgress)
-      const payload = { path: storagePath, filename: file.name, contentType: file.type }
+      const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
+      console.log(`Firebase upload complete: ${storagePath}`)
+
+      const payload = { storagePath, downloadURL }
       // Validate required fields before calling API
-      if (!payload.path || !payload.filename || !payload.contentType) {
-        throw new Error('Missing required upload metadata (path, filename, contentType)')
+      if (!payload.storagePath || !payload.downloadURL) {
+        throw new Error('Missing required upload metadata (storagePath or downloadURL)')
       }
-      console.log('[startEditorPipeline] POST', `${API_BASE}/api/jobs`, payload)
+      console.log('[startEditorPipeline] Creating job with', payload)
       const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const createJson = await safeJson(createResp)
+      type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
+      const createJson = (await safeJson(createResp)) as CreateJobResponse
       if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
-      setJobId(createJson.jobId)
+      setJobId(createJson.jobId || createJson.jobID || createJson.id)
       setJobStatus('QUEUED')
       // start polling job status every 2s
       startJobListening(createJson.jobId)
