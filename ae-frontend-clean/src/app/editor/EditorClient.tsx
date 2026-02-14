@@ -6,7 +6,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PendingSubscriptionBanner } from "@/components/PendingSubscriptionBanner";
 import EditorControls from "@/components/editor/EditorControls";
 import ProgressStepper from "@/components/editor/ProgressStepper";
-import PreviewCard from "@/components/editor/PreviewCard";
 import UpgradeModal from "@/components/UpgradeModal";
 import {
   AnalyzeResult,
@@ -221,18 +220,7 @@ export default function EditorClientPage() {
               onSettingsChange={(next) => setSettings(next)}
             />
             <div className="space-y-6">
-              <PreviewCard
-                clip={primaryClip}
-                draftUrl={draftUrl}
-                finalUrl={finalUrl}
-                outputUrl={outputUrl}
-                status={jobStatus}
-                eta={generateEta || analyzeEta}
-                stageMessage={stageMessage}
-                inputSizeBytes={inputSizeBytes}
-                outputSizeBytes={outputSizeBytes}
-                details={details}
-              />
+              {/* Original preview card removed per request — upload controls remain in `EditorControls`. */}
             </div>
           </div>
           {billingStatus && (
