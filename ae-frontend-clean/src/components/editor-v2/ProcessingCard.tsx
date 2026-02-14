@@ -30,6 +30,7 @@ export default function ProcessingCard({
   fileName,
   smartZoom,
   errorMessage,
+  onRetry,
 }: {
   status?: string
   overallProgress?: number
@@ -40,6 +41,7 @@ export default function ProcessingCard({
   fileName?: string | null
   smartZoom?: boolean
   errorMessage?: string | null
+  onRetry?: () => void
 }) {
   // Normalize progress: prefer jobResp?.progress, then overallProgress, then 0
   const rawProgress = jobResp?.progress ?? overallProgress ?? 0
@@ -91,7 +93,7 @@ export default function ProcessingCard({
     if (s === 'rendering') return 'Rendering final video'
     if (s === 'uploading_result') return 'Uploading result'
     if (s === 'done') return 'Complete'
-    if (s === 'error') return 'Error'
+    if (s === 'error') return 'Failed'
     return s
   }
 
@@ -111,9 +113,10 @@ export default function ProcessingCard({
           </div>
         </div>
 
+        {/* intentionally not rendering raw job IDs to avoid leaking identifiers in the UI */}
         <div className="text-right">
-          <div className="text-xs text-white/60">Job</div>
-          <div className="font-mono text-sm text-white/80">{jobId ?? '—'}</div>
+          <div className="text-xs text-white/60">Status</div>
+          <div className="font-mono text-sm text-white/80">{displayStatus(status)}</div>
         </div>
       </div>
 
@@ -163,7 +166,14 @@ export default function ProcessingCard({
         </div>
       </div>
 
-      {errorMessage && <div className="mt-3 p-3 rounded-md bg-red-700/20 border border-red-600 text-sm text-red-200">{errorMessage}</div>}
+      {errorMessage && (
+        <div className="mt-3 p-3 rounded-md bg-red-700/20 border border-red-600 text-sm text-red-200 flex items-center justify-between">
+          <div className="mr-4">{errorMessage}</div>
+          {onRetry && (
+            <button onClick={onRetry} className="ml-2 px-3 py-1 rounded-md bg-white/6 text-white/80 hover:bg-white/10">Retry</button>
+          )}
+        </div>
+      )}
 
       <style>{`
         @keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }

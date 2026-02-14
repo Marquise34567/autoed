@@ -6,10 +6,10 @@ type StartCheckoutPayload = {
   next?: string;
 };
 
-import { API_BASE } from '@/lib/api'
+import { apiFetch } from '@/lib/client/apiClient'
 
 export async function startCheckout(payload: StartCheckoutPayload): Promise<string> {
-  const res = await fetch(`${API_BASE}/api/stripe/checkout`, {
+  const res = await apiFetch('/api/stripe/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

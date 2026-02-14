@@ -20,7 +20,8 @@ import { uploadVideoToStorage } from '@/lib/client/storage-upload'
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
 import { initFetchGuard } from '@/lib/client/fetch-guard'
 initFetchGuard()
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || CENTRAL_API_BASE
+import { apiFetch } from '@/lib/client/apiClient'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
@@ -232,98 +233,114 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     startPollingJob(jid)
   }
 
+  const loggedJobsRef = useRef<Record<string, boolean>>({})
+
   const startPollingJob = (jid: string) => {
     if (!jid) return
-    try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
+    try { if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null } } catch (_) {}
+    let cancelled = false
+    let backoff = 1000
+    const startAt = Date.now()
+    const MAX_MS = 10 * 60 * 1000 // 10 minutes
+
     const tick = async () => {
+      if (cancelled) return
       try {
-        console.log('Polling job:', jid)
-        const url = `${API_BASE}/api/jobs?id=${encodeURIComponent(jid)}`
-        const r = await fetch(url)
+        const url = `/api/jobs?id=${encodeURIComponent(jid)}`
+        const r = await apiFetch(url)
         if (!r.ok) {
-          if (r.status === 404) return
-          console.warn('[poll] status', r.status)
-          return
-        }
-        const data: any = await r.json()
-        console.log('Job response:', data)
-        // backend returns { ok: true, job: { ... } }
-        if (!data?.job) return
-        const job: JobResponse & any = data.job
-        console.log('Polled status:', job.status)
-        setJobResp(job)
+          if (r.status === 404) {
+            // resource not ready — continue polling
+          } else {
+            throw new Error(`status ${r.status}`)
+          }
+        } else {
+          const data: any = await r.json()
+          if (!data?.job) return
+          const job: JobResponse & any = data.job
+          setJobResp(job)
 
-        // Normalize progress: backend may use 0..1 or 0..100
-        if (typeof job.progress === 'number') {
-          const raw = job.progress
-          const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
-          setOverallProgress(frac)
-          try {
-            if (frac > 0 && jobStartRef.current) {
-              const elapsedSec = (Date.now() - jobStartRef.current) / 1000
-              const totalEstSec = Math.max(1, elapsedSec / frac)
-              const remaining = Math.max(0, Math.round(totalEstSec - elapsedSec))
-              setOverallEtaSec(remaining)
-            }
-          } catch (_) {}
-        }
+          // Log full response once when job is not 'processing'
+          const state = String(job.status || job.phase || '').toLowerCase()
+          if (state !== 'processing' && !loggedJobsRef.current[jid]) {
+            try { console.error('Job failed / updated:', { jobId: jid, job }) } catch (_) {}
+            loggedJobsRef.current[jid] = true
+          }
 
-        const state = String(job.status || job.phase || '').toLowerCase()
-
-        if (state === 'processing') {
-          // update progress only
+          // Normalize and update progress
           if (typeof job.progress === 'number') {
             const raw = job.progress
             const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
             setOverallProgress(frac)
+            try {
+              if (frac > 0 && jobStartRef.current) {
+                const elapsedSec = (Date.now() - jobStartRef.current) / 1000
+                const totalEstSec = Math.max(1, elapsedSec / frac)
+                const remaining = Math.max(0, Math.round(totalEstSec - elapsedSec))
+                setOverallEtaSec(remaining)
+              }
+            } catch (_) {}
           }
-          setStatus('analyzing')
-          return
-        }
 
-        if (state === 'done') {
-          // finalize
-          setOverallProgress(1)
-          setOverallEtaSec(0)
-          setStatus('done')
-          const resultUrl = job.resultUrl || job.result?.videoUrl || job.result?.url || job.result?.videoURL
-          if (resultUrl) {
-            setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
-            setShowPreview(true)
-            setPreviewUrl(resultUrl)
+          // Terminal states: done / complete / failed / error
+          if (state === 'done' || state === 'complete') {
+            setOverallProgress(1)
+            setOverallEtaSec(0)
+            setStatus('done')
+            const resultUrl = job.resultUrl || job.result?.videoUrl || job.result?.url || job.result?.videoURL
+            if (resultUrl) {
+              setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
+              setShowPreview(true)
+              setPreviewUrl(resultUrl)
+            }
+            cancelled = true
+            return
           }
-          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
-          return
-        }
 
-        if (state === 'error') {
-          const msg = job.errorMessage || job.error?.message || job.message
-          setStatus('error')
-          setErrorMessage(msg || 'Processing error')
-          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
-          return
-        }
+          if (state === 'error' || state === 'failed') {
+            const msg = job.errorMessage || job.error?.message || job.message
+            setStatus('error')
+            setErrorMessage(msg || 'Processing failed (no error message returned).')
+            cancelled = true
+            return
+          }
 
-        // map other statuses
-        const map: Record<string, Status> = {
-          queued: 'analyzing',
-          analyzing: 'analyzing',
-          hook: 'hook',
-          cutting: 'cutting',
-          pacing: 'pacing',
-          rendering: 'rendering',
-          uploading: 'uploading_result',
-          error: 'error',
+          const map: Record<string, Status> = {
+            queued: 'analyzing',
+            analyzing: 'analyzing',
+            hook: 'hook',
+            cutting: 'cutting',
+            pacing: 'pacing',
+            rendering: 'rendering',
+            uploading: 'uploading_result',
+            error: 'error',
+          }
+          setStatus(map[state] || 'analyzing')
         }
-        setStatus(map[state] || 'analyzing')
-      } catch (e) {
+      } catch (e: any) {
         console.warn('[poll] fetch error', e)
+        setErrorMessage('Unable to reach server')
+        setStatus('error')
+        cancelled = true
+        return
+      }
+
+      if (!cancelled) {
+        const elapsed = Date.now() - startAt
+        if (elapsed > MAX_MS) {
+          setErrorMessage('Processing timed out. Please try again.')
+          setStatus('error')
+          cancelled = true
+          return
+        }
+        const wait = Math.min(10000, backoff)
+        backoff = Math.min(10000, Math.round(backoff * 2))
+        pollRef.current = window.setTimeout(tick, wait) as unknown as number
       }
     }
+
     tick()
-    pollRef.current = setInterval(tick, 2000) as unknown as number
-    // cleanup on route change/unmount
-    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+    return () => { cancelled = true; if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null } }
   }
 
   const startPollingFallback = (jid: string) => {
@@ -642,8 +659,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       {completionOpen && jobId && (
         <CompletionModal
+          isOpen={completionOpen}
           jobId={jobId}
-          videoUrl={jobResp?.result?.videoUrl || previewUrl}
+          previewUrl={jobResp?.result?.videoUrl || previewUrl}
           onClose={handleModalClose}
           onDownload={handleModalDownload}
         />

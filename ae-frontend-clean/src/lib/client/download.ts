@@ -14,11 +14,11 @@ export async function startDownload(jobId: string) {
   if (!user) throw new Error('Not authenticated')
   const idToken = await user.getIdToken(true)
 
-  const resp = await fetch(`${API_BASE}/api/video/download`, {
+    const resp = await apiFetch('/api/video/download', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
+       Authorization: `Bearer ${idToken}`, // Retaining the Authorization header
     },
     body: JSON.stringify({ jobId }),
   })

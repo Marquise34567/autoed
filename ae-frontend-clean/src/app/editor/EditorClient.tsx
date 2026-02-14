@@ -22,7 +22,8 @@ import { trackPostHogEvent, trackPlausibleEvent } from "@/lib/analytics/client";
 import { uploadVideoToStorage } from "@/lib/client/storage-upload";
 import { safeJson } from '@/lib/client/safeJson';
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api';
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || CENTRAL_API_BASE
+import { apiFetch } from '@/lib/client/apiClient'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { initFetchGuard } from '@/lib/client/fetch-guard';
 initFetchGuard();
 
@@ -121,7 +122,7 @@ export default function EditorClientPage() {
       }
       console.log('[startEditorPipeline] Creating job with', payload)
       console.log('[startEditorPipeline] POST payload:', JSON.stringify(payload))
-      const createResp = await fetch(`${API_BASE}/api/jobs`, {
+      const createResp = await apiFetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -146,7 +147,7 @@ export default function EditorClientPage() {
     try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
     const tick = async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/jobs/${jid}`)
+        const r = await apiFetch(`/api/jobs/${jid}`)
         if (!r.ok) {
           if (r.status === 404) return
           console.warn('[poll] received', r.status)
@@ -217,7 +218,7 @@ export default function EditorClientPage() {
   // Handle download initiated from completion modal
   const handleModalDownload = async (jid?: string | null) => {
     if (!jid) return
-    const endpoint = `${API_BASE}/api/jobs/${jid}/download`
+    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}/download`
     try {
       // Try fetching - if backend returns JSON { downloadUrl } use it, otherwise fall back to redirecting
       const resp = await fetch(endpoint, { method: 'GET' })

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE } from '@/lib/api'
+import { apiFetch } from '@/lib/client/apiClient'
 
 /**
  * PendingSubscriptionBanner
@@ -28,14 +29,14 @@ export function PendingSubscriptionBanner() {
     }
 
     // Check billing status API for pending verification
-    fetch(`${API_BASE}/api/billing/status`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const txt = await res.text().catch(() => '')
-          throw new Error(`API Error ${res.status}: ${txt}`)
-        }
-        return res.json()
-      })
+      apiFetch('/api/billing/status')
+        .then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text().catch(() => '')
+            throw new Error(`API Error ${res.status}: ${txt}`)
+          }
+          return res.json()
+        })
       .then(data => {
         if (data.ok && data.isPending) {
           setIsPending(true);

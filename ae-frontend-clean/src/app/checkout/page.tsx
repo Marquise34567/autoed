@@ -44,7 +44,7 @@ function CheckoutContent() {
         // ignore token retrieval errors; server will enforce auth if required
       }
 
-      const response = await fetch(`${API_BASE}/api/stripe/checkout`, {
+          const response = await apiFetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
