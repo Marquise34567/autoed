@@ -15,6 +15,8 @@ import { safeJson } from '@/lib/client/safeJson'
 import { uploadVideoToStorage } from '@/lib/client/storage-upload'
 // Use the explicit env var as requested; fallback to the central API_BASE if available
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
+import { initFetchGuard } from '@/lib/client/fetch-guard'
+initFetchGuard()
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || CENTRAL_API_BASE
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'

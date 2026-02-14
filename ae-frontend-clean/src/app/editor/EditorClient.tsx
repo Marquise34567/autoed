@@ -22,6 +22,8 @@ import { uploadVideoToStorage } from "@/lib/client/storage-upload";
 import { safeJson } from '@/lib/client/safeJson';
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || CENTRAL_API_BASE
+import { initFetchGuard } from '@/lib/client/fetch-guard';
+initFetchGuard();
 
 // Temporary type stubs for missing server types
 type JobStatusResponse = any
