@@ -72,6 +72,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [jobResp, setJobResp] = useState<JobResponse | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const jobStartRef = useRef<number | null>(null)
 
   async function startEditorPipeline(file: File) {
     if (!authReady) {
@@ -198,6 +199,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
       const jid = j.jobId || j.jobID || j.id
       setJobId(jid)
+      // record approximate job start time for ETA estimates
+      jobStartRef.current = Date.now()
       setStatus('analyzing')
       startPollingJob(jid)
     } catch (e: any) {
@@ -229,7 +232,21 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         const j: JobResponse = await r.json()
         if (!j) return
         setJobResp(j)
-        if (typeof j.progress === 'number') setOverallProgress(j.progress)
+        if (typeof j.progress === 'number') {
+          // normalize progress: backend may use 0..1 or 0..100
+          const raw = j.progress
+          const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
+          setOverallProgress(frac)
+          // compute ETA if we have a job start time
+          try {
+            if (frac > 0 && jobStartRef.current) {
+              const elapsedSec = (Date.now() - jobStartRef.current) / 1000
+              const totalEstSec = Math.max(1, elapsedSec / frac)
+              const remaining = Math.max(0, Math.round(totalEstSec - elapsedSec))
+              setOverallEtaSec(remaining)
+            }
+          } catch (_) {}
+        }
         // map backend status to local status
         const map: Record<string, Status> = {
           queued: 'analyzing',
@@ -245,6 +262,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         setStatus(map[j.status] || 'analyzing')
         if (j.status === 'done' || j.status === 'error') {
           if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          // clear ETA when finished
+          setOverallEtaSec(0)
         }
       } catch (e) {
         console.warn('[poll] fetch error', e)
@@ -404,7 +423,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
   const card = (
     <div className="w-full max-w-2xl p-6">
-      <div className="rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md shadow-xl">
+      <div className={`rounded-2xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.6),rgba(7,9,15,0.5))] p-6 backdrop-blur-md shadow-xl`}>
         <h2 className="text-2xl font-bold mb-4">Editor Pipeline</h2>
 
         <div className="mb-4">
@@ -467,7 +486,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 <div>
                   <div className="text-sm text-white/70">Processing Status</div>
                   <div className="font-semibold text-white">{status === 'idle' ? 'Waiting for upload' : (status === 'uploading' ? 'Uploading' : status === 'analyzing' ? 'Analyzing full video' : status === 'hook' ? 'Selecting best hook (3–5s)' : status === 'cutting' ? 'Extracting highlights (5–10s)' : status === 'pacing' ? 'Optimizing pacing' : status === 'rendering' ? 'Rendering final video' : status === 'uploading_result' ? 'Uploading result' : status === 'done' ? 'Complete' : 'Error')}</div>
-                  <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
+                      <div className="text-xs text-white/60 mt-1">Job: {jobId || '—'}</div>
+                      {jobId && status !== 'idle' && status !== 'done' && status !== 'error' && (
+                        <div className="text-xs text-emerald-300 mt-1">ETA: {overallEtaSec > 0 ? `${Math.floor(overallEtaSec/60)}m ${overallEtaSec%60}s` : 'Estimating…'}</div>
+                      )}
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-white/70">Progress</div>
