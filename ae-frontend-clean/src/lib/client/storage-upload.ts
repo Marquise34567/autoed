@@ -60,59 +60,29 @@ export async function uploadVideoToStorage(
   } catch (e) {
     throw new Error(`Invalid response from ${API_BASE}/api/upload-url: ${e}`)
   }
+  // Step 2: Upload the file directly to Google Cloud Storage via signed URL using fetch + PUT
+  // Follow the strict pattern: use PUT, send only Content-Type header, and raw file as body.
+  try {
+    if (!uploadUrl) throw new Error('Missing uploadUrl')
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream'
+      },
+      body: file,
+    })
 
-  // Step 2: Upload the file directly to Supabase Storage via signed URL
-  // Use XMLHttpRequest or fetch with progress tracking
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    // Track upload progress
-    xhr.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable && onProgress) {
-        const percentComplete = (event.loaded / event.total) * 100;
-        onProgress(percentComplete);
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      // Successful upload
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({ storagePath: path, uploadUrl });
-        return
-      }
-
-      // Some browsers report CORS failures as status 0 or network errors.
-      if (xhr.status === 0) {
-        reject(new Error("Storage CORS is not configured for this domain. Run scripts/set-storage-cors.sh"));
-        return
-      }
-
-      // Provide detailed failure info to aid debugging
-      const respText = xhr.responseText ? xhr.responseText.substring(0, 2000) : ''
-      console.error(`[storage-upload] upload failed status=${xhr.status} statusText=${xhr.statusText} response=${respText}`)
-      reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText} - ${respText}`));
-    });
-
-    xhr.addEventListener("error", () => {
-      // Often a CORS issue shows up as a network error with status 0
-      if (xhr.status === 0) {
-        reject(new Error("Storage CORS is not configured for this domain. Run scripts/set-storage-cors.sh"));
-        return
-      }
-      reject(new Error("Upload failed due to network error"));
-    });
-
-    xhr.addEventListener("abort", () => {
-      reject(new Error("Upload was aborted"));
-    });
-
-    xhr.open("PUT", uploadUrl, true);
-    // Ensure Content-Type header matches the one used to sign the URL exactly
-    xhr.setRequestHeader("Content-Type", file.type);
-    try {
-      xhr.send(file);
-    } catch (err) {
-      reject(new Error(`Upload send error: ${String(err)}`))
+    if (!uploadResponse.ok) {
+      const text = await uploadResponse.text().catch(() => '')
+      console.error(`[storage-upload] upload failed status=${uploadResponse.status} statusText=${uploadResponse.statusText} response=${text}`)
+      throw new Error(`Upload failed with status ${uploadResponse.status}`)
     }
-  });
+
+    // Optionally report final progress as 100%
+    if (onProgress) try { onProgress(100) } catch (_) {}
+
+    return { storagePath: path, uploadUrl }
+  } catch (e) {
+    throw new Error(`Upload error: ${e && (e as any).message ? (e as any).message : String(e)}`)
+  }
 }
