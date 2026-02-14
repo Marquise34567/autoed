@@ -68,16 +68,22 @@ export async function uploadVideoToStorage(
     // by reading the `X-Goog-SignedHeaders` query param. If the signed headers
     // include `content-type`, we must set it exactly; otherwise we omit headers.
     let uploadResponse: Response
+    let signedHeaders = ''
     try {
       const urlObj = new URL(uploadUrl)
-      const signedHeaders = (urlObj.searchParams.get('X-Goog-SignedHeaders') || urlObj.searchParams.get('x-goog-signedheaders') || '').toLowerCase()
+      signedHeaders = (urlObj.searchParams.get('X-Goog-SignedHeaders') || urlObj.searchParams.get('x-goog-signedheaders') || '').toLowerCase()
+      console.log(`[storage-upload] signedHeaders for uploadUrl: ${signedHeaders}`)
+      console.log(`[storage-upload] contentType requested for signing: ${file.type}`)
+
       if (signedHeaders.includes('content-type')) {
+        console.log('[storage-upload] PUT will include Content-Type header')
         uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
           headers: { 'Content-Type': file.type || 'application/octet-stream' },
           body: file,
         })
       } else {
+        console.log('[storage-upload] PUT will NOT include any custom headers')
         uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
           body: file,
@@ -90,6 +96,30 @@ export async function uploadVideoToStorage(
     if (!uploadResponse.ok) {
       const text = await uploadResponse.text().catch(() => '')
       console.error(`[storage-upload] upload failed status=${uploadResponse.status} statusText=${uploadResponse.statusText} response=${text}`)
+      // If the signed URL requires Content-Type and we received 403, try a single
+      // heuristic retry: many mkv files report mime `video/x-matroska` in the browser
+      // but some signers use `video/matroska`. Retry with stripped `x-` prefix.
+      if (uploadResponse.status === 403 && signedHeaders.includes('content-type')) {
+        try {
+          const altType = file.type.replace('x-', '')
+          if (altType && altType !== file.type) {
+            console.log(`[storage-upload] retrying upload with alternative Content-Type: ${altType}`)
+            const retryResp = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': altType },
+              body: file,
+            })
+            if (retryResp.ok) {
+              if (onProgress) try { onProgress(100) } catch (_) {}
+              return { storagePath: path, uploadUrl }
+            }
+            const retryText = await retryResp.text().catch(() => '')
+            console.error(`[storage-upload] retry failed status=${retryResp.status} response=${retryText}`)
+          }
+        } catch (e) {
+          console.error('[storage-upload] retry error', e)
+        }
+      }
       throw new Error(`Upload failed with status ${uploadResponse.status}`)
     }
 
