@@ -174,7 +174,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
       console.log(`Firebase upload complete: ${storagePath}`)
 
-      const payload = { storagePath, downloadURL }
+      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream" }
 
       // Validate before sending
       if (!payload.storagePath || !payload.downloadURL) {
@@ -192,6 +192,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       }
 
       console.log('[createJobWithFile] Creating job with', payload)
+      console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
 
       const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', headers, body: JSON.stringify(payload) })
       type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }

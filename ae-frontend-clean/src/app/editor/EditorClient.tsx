@@ -109,12 +109,13 @@ export default function EditorClientPage() {
       const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
       console.log(`Firebase upload complete: ${storagePath}`)
 
-      const payload = { storagePath, downloadURL }
+      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream" }
       // Validate required fields before calling API
       if (!payload.storagePath || !payload.downloadURL) {
         throw new Error('Missing required upload metadata (storagePath or downloadURL)')
       }
       console.log('[startEditorPipeline] Creating job with', payload)
+      console.log('[startEditorPipeline] POST payload:', JSON.stringify(payload))
       const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,10 +124,11 @@ export default function EditorClientPage() {
       type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
       const createJson = (await safeJson(createResp)) as CreateJobResponse
       if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
-      setJobId(createJson.jobId || createJson.jobID || createJson.id)
+      const jid = createJson.jobId || createJson.jobID || createJson.id
+      setJobId(jid)
       setJobStatus('QUEUED')
-      // start polling job status every 2s
-      startJobListening(createJson.jobId)
+      // start polling job status every 2s using resolved job id
+      startJobListening(jid)
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Upload failed')
