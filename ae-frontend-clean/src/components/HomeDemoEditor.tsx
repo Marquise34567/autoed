@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import PipelineStepper from '@/components/editor-v2/PipelineStepper'
+import PremiumLoader from '@/components/PremiumLoader'
 
 export default function HomeDemoEditor() {
   const [current, setCurrent] = useState<string>('queued')
@@ -36,11 +37,7 @@ export default function HomeDemoEditor() {
       </div>
 
       <div className="mt-4 rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-center">
-        <div className="mb-3 sm:mb-4 text-2xl sm:text-3xl">📹</div>
-        <p className="text-sm text-white/60">Analyzing video...</p>
-        <div className="mt-3 sm:mt-4 w-full bg-white/10 rounded-full h-2 overflow-hidden">
-          <div className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.round(progress * 100)}%` }} />
-        </div>
+        <PremiumLoader status={current} progress={progress} />
         <p className="text-xs text-white/40 mt-2">2m 45s detected</p>
       </div>
     </div>

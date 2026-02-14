@@ -1,3 +1,98 @@
+"use client"
+
+import React, { useEffect, useRef, useState } from 'react'
+
+export default function CompletionModal({ jobId, videoUrl, onClose, onDownload }: { jobId: string; videoUrl?: string; onClose: () => void; onDownload: () => void }) {
+  const [toast, setToast] = useState<string | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const animRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    // simple confetti using canvas — lightweight, no deps
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let particles: Array<any> = []
+    const rand = (a:number, b:number) => a + Math.random() * (b - a)
+    const colors = ['#ff6b6b','#ffd166','#4dd0e1','#7c3aed','#06b6d4']
+    const resize = () => { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight }
+    resize()
+    window.addEventListener('resize', resize)
+
+    // generate a burst
+    for (let i=0;i<80;i++) {
+      particles.push({
+        x: canvas.width/2 + rand(-80,80),
+        y: canvas.height/2 + rand(-40,40),
+        vx: rand(-6,6),
+        vy: rand(-12,-3),
+        r: rand(4,9),
+        color: colors[Math.floor(Math.random()*colors.length)],
+        life: rand(50,140)
+      })
+    }
+
+    const step = () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height)
+      particles.forEach(p => {
+        p.vy += 0.3
+        p.x += p.vx
+        p.y += p.vy
+        p.life--
+        ctx.fillStyle = p.color
+        ctx.beginPath()
+        ctx.ellipse(p.x,p.y,p.r,p.r,0,0,Math.PI*2)
+        ctx.fill()
+      })
+      particles = particles.filter(p=>p.life>0)
+      if (particles.length>0) animRef.current = requestAnimationFrame(step)
+    }
+
+    animRef.current = requestAnimationFrame(step)
+    const t = setTimeout(()=>{ if (animRef.current) cancelAnimationFrame(animRef.current) }, 3500)
+    return () => { clearTimeout(t); window.removeEventListener('resize', resize); if (animRef.current) cancelAnimationFrame(animRef.current) }
+  }, [])
+
+  const handleDownload = () => {
+    try {
+      onDownload()
+      setToast('Download started ✅ Go make the next one.')
+    } catch (e) {}
+  }
+
+  return (
+    <div className="ae-modal-backdrop">
+      <div className="ae-modal celebration-wrap">
+        <canvas ref={canvasRef} className="celebration-canvas" />
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="title">Your video is ready 🎉</div>
+            <div className="message">Thank you for creating. Consistency beats talent — you just shipped. Now post it and let the world react.</div>
+          </div>
+          <div className="text-white/60">Job: {jobId}</div>
+        </div>
+
+        <div className="mt-4 ae-modal .video-wrap">
+          <div className="video-wrap" style={{height: 360}}>
+            {videoUrl ? (
+              // small player inside modal
+              <video src={videoUrl} controls className="w-full h-full object-contain bg-black" />
+            ) : (
+              <div className="text-white/60 p-6">Preview not available</div>
+            )}
+          </div>
+        </div>
+
+        <div className="actions">
+          <button className="primary" onClick={handleDownload}>Download</button>
+          <button className="secondary" onClick={onClose}>Close</button>
+        </div>
+
+        {toast && <div className="ae-toast">{toast}</div>}
+      </div>
+    </div>
+  )
+}
 import React, { useEffect, useRef } from 'react'
 
 interface Props {

@@ -6,6 +6,8 @@ import ProgressBar from '@/components/ProgressBar'
 import JobDetails from '@/components/editor/JobDetails'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
 import NotificationPopup from '@/components/NotificationPopup'
+import PremiumLoader from '@/components/PremiumLoader'
+import CompletionModal from '@/components/CompletionModal'
 import { planFeatures } from '@/lib/plans'
 import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
 import { useAuth } from '@/lib/auth/useAuth'
@@ -76,6 +78,16 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [isUploading, setIsUploading] = useState(false)
   const jobStartRef = useRef<number | null>(null)
   const [smartZoom, setSmartZoom] = useState<boolean>(true)
+  const [completionOpen, setCompletionOpen] = useState(false)
+  const [lastCelebratedJobId, setLastCelebratedJobId] = useState<string | null>(null)
+
+  const handleModalClose = () => {
+    setCompletionOpen(false)
+  }
+
+  const handleModalDownload = () => {
+    if (jobId) handleDownload(jobId)
+  }
 
   async function startEditorPipeline(file: File) {
     if (!authReady) {
@@ -436,10 +448,29 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   }, [showPreview, jobId])
 
   useEffect(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('ae:lastCelebratedJobId') : null
+      if (stored) setLastCelebratedJobId(stored)
+    } catch (e) {}
+
     if (status === 'done' && jobId) {
       setShowPreview(true);
     }
   }, [status, jobId])
+
+  // open completion modal once per job when a final result URL exists
+  useEffect(() => {
+    try {
+      const url = jobResp?.result?.videoUrl || previewUrl
+      if (!url || !jobId) return
+      if (lastCelebratedJobId === jobId) return
+      // open modal and persist celebrated job id
+      setCompletionOpen(true)
+      setLastCelebratedJobId(jobId)
+      try { localStorage.setItem('ae:lastCelebratedJobId', jobId) } catch (e) {}
+    } catch (e) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobResp?.result?.videoUrl, previewUrl, jobId])
 
   // Direct download handler: redirect browser to backend download endpoint
   const handleDownload = (jid?: string) => {
@@ -547,7 +578,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
               </div>
 
               <div className="mt-3">
-                <ProgressBar value={ (jobResp?.progress ?? overallProgress) as any } />
+                <PremiumLoader status={status} progress={(jobResp?.progress ?? overallProgress) as any} />
+                <div className="mt-3">
+                  <ProgressBar value={ (jobResp?.progress ?? overallProgress) as any } />
+                </div>
               </div>
 
               {errorMessage && (
@@ -599,6 +633,15 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             </div>
           </div>
         </div>
+      )}
+
+      {completionOpen && jobId && (
+        <CompletionModal
+          jobId={jobId}
+          videoUrl={jobResp?.result?.videoUrl || previewUrl}
+          onClose={handleModalClose}
+          onDownload={handleModalDownload}
+        />
       )}
     </div>
   )
