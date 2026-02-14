@@ -7,6 +7,8 @@ import { PendingSubscriptionBanner } from "@/components/PendingSubscriptionBanne
 import EditorControls from "@/components/editor/EditorControls";
 import ProgressStepper from "@/components/editor/ProgressStepper";
 import UpgradeModal from "@/components/UpgradeModal";
+import CompletionModal from '@/components/CompletionModal';
+import PremiumBadge from '@/components/PremiumBadge';
 import {
   AnalyzeResult,
   CandidateSegment,
@@ -75,6 +77,9 @@ export default function EditorClientPage() {
   const [draftUrl, setDraftUrl] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string | null>(null);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const lastShownJobIdRef = useRef<string | null>(null);
+  const [downloadStarted, setDownloadStarted] = useState(false);
   const [stageMessage, setStageMessage] = useState<string | null>(null);
   const [details, setDetails] = useState<JobStatusResponse["details"] | null>(null);
   const [inputSizeBytes, setInputSizeBytes] = useState<number | undefined>();
@@ -94,6 +99,7 @@ export default function EditorClientPage() {
     autoHook: true,
     soundEnhance: true,
     manualFacecamCrop: null,
+    smartZoom: true,
   });
 
   async function startEditorPipeline(file: File) {
@@ -108,7 +114,7 @@ export default function EditorClientPage() {
       const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
       console.log(`Firebase upload complete: ${storagePath}`)
 
-      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream" }
+      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream", smartZoom: settings?.smartZoom !== false }
       // Validate required fields before calling API
       if (!payload.storagePath || !payload.downloadURL) {
         throw new Error('Missing required upload metadata (storagePath or downloadURL)')
@@ -160,6 +166,18 @@ export default function EditorClientPage() {
           const resultUrl = job.resultUrl || job.result?.videoUrl || job.outputUrl
           if (resultUrl) setOutputUrl(resultUrl)
           setGenerationDone(true)
+          // Open completion modal once per completed job
+          try {
+            const lower = String(job.status || job.phase || '').toLowerCase()
+            const jobIsComplete = lower === 'done' || lower === 'complete' || lower === 'ready_to_download' || lower === 'ready'
+            if (jobIsComplete && jid && lastShownJobIdRef.current !== jid) {
+              lastShownJobIdRef.current = jid
+              setShowCompleteModal(true)
+              setDownloadStarted(false)
+            }
+          } catch (e) {
+            // ignore
+          }
         }
       } catch (e) {
         console.warn('[poll] fetch error', e)
@@ -196,6 +214,36 @@ export default function EditorClientPage() {
     await startEditorPipeline(selectedFile)
   }
 
+  // Handle download initiated from completion modal
+  const handleModalDownload = async (jid?: string | null) => {
+    if (!jid) return
+    const endpoint = `${API_BASE}/api/jobs/${jid}/download`
+    try {
+      // Try fetching - if backend returns JSON { downloadUrl } use it, otherwise fall back to redirecting
+      const resp = await fetch(endpoint, { method: 'GET' })
+      // If JSON response contains a downloadUrl, redirect to it
+      const contentType = resp.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        const data = await resp.json().catch(() => null)
+        const url = data?.downloadUrl || data?.url || data?.download || null
+        if (url) {
+          setDownloadStarted(true)
+          window.location.href = url
+          return
+        }
+      }
+    } catch (e) {
+      // ignore and fallback to direct redirect
+    }
+    // Fallback: let the browser follow any redirect or download from endpoint
+    try {
+      setDownloadStarted(true)
+      window.location.href = endpoint
+    } catch (e) {
+      console.warn('Download redirect failed', e)
+    }
+  }
+
   // ... remaining editor client implementation follows (identical to original)
 
   // For brevity, mount a small portion of UI while preserving full logic above.
@@ -206,7 +254,10 @@ export default function EditorClientPage() {
       <div className="min-h-screen bg-[#07090f] px-4 sm:px-6 py-6 sm:py-10 text-white lg:px-16">
         <div className="mx-auto max-w-6xl space-y-6 sm:space-y-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl sm:text-3xl font-semibold">Auto-Editor (restored)</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-semibold">Auto-Editor</h1>
+              <PremiumBadge size="sm" />
+            </div>
             <p className="text-white/60">Build {buildId}</p>
           </div>
           <div className="grid gap-6 sm:gap-8 lg:grid-cols-[360px_1fr]">
@@ -232,6 +283,14 @@ export default function EditorClientPage() {
               onClose={() => setShowUpgradeModal(false)}
             />
           )}
+          <CompletionModal
+            isOpen={showCompleteModal}
+            jobId={jobId}
+            previewUrl={outputUrl}
+            downloadStarted={downloadStarted}
+            onClose={() => setShowCompleteModal(false)}
+            onDownload={() => handleModalDownload(jobId)}
+          />
         </div>
       </div>
     </ProtectedRoute>

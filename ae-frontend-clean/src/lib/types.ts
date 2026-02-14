@@ -47,6 +47,7 @@ export type GenerateSettings = {
   autoHook: boolean;
   soundEnhance: boolean;
   manualFacecamCrop?: ManualFacecamCrop | null;
+  smartZoom?: boolean; // new: enable AI zoom effects (default ON)
 };
 
 export type GeneratedClip = {

@@ -12,24 +12,18 @@ export default function ProgressStepper({
       {steps.map((step, index) => {
         const isActive = index <= currentStep;
         return (
-          <div key={step} className="flex items-center gap-2">
-            <div
-              className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border text-[10px] sm:text-xs font-semibold ${
-                isActive
-                  ? "border-fuchsia-400 bg-fuchsia-500/20 text-white"
-                  : "border-white/10 text-white/40"
-              }`}
-            >
+          <div key={step} className="flex items-center gap-3">
+            <div className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-sm font-semibold transition-all ${isActive ? 'bg-gradient-to-r from-pink-500 to-yellow-400 text-white shadow-[0_6px_20px_rgba(250,207,114,0.08)]' : 'bg-slate-800 border border-white/6 text-white/40'}`}>
               {index + 1}
             </div>
-            <span className={isActive ? "text-white" : "text-white/40"}>
+            <span className={`whitespace-nowrap ${isActive ? 'text-white font-medium' : 'text-white/40'}`}>
               {step}
             </span>
             {index !== steps.length - 1 && (
-              <div className="hidden sm:block h-px w-6 bg-white/10" />
+              <div className="hidden sm:block h-px w-6 bg-white/6" />
             )}
           </div>
-        );
+        )
       })}
     </div>
   );

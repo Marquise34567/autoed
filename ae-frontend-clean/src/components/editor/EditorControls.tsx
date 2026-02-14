@@ -1,4 +1,5 @@
 import { ChangeEvent } from "react";
+import PremiumBadge from '@/components/PremiumBadge';
 import { GenerateSettings } from "@/lib/types";
 
 type EditorControlsProps = {
@@ -21,14 +22,17 @@ export default function EditorControls({
 }: EditorControlsProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-6">
-        <label className="text-xs sm:text-sm uppercase tracking-[0.2em] text-white/40">
+      <div className="relative rounded-2xl sm:rounded-3xl border border-white/6 bg-gradient-to-br from-white/3 to-white/2 p-4 sm:p-6 shadow-lg backdrop-blur-md">
+        <div className="absolute -top-3 right-4">
+          <PremiumBadge size="sm" />
+        </div>
+        <label className="text-xs sm:text-sm uppercase tracking-[0.12em] text-white/50">
           Project Title
         </label>
         <input
           value={title}
           onChange={(event) => onTitleChange(event.target.value)}
-          className="mt-3 w-full rounded-xl sm:rounded-2xl border border-white/10 bg-black/40 px-4 py-3.5 sm:py-3 text-base sm:text-sm text-white placeholder:text-white/40 min-h-12"
+          className="mt-3 w-full rounded-xl sm:rounded-2xl border border-white/8 bg-black/40 px-4 py-3.5 sm:py-3 text-base sm:text-sm text-white placeholder:text-white/40 min-h-12 shadow-inner"
           placeholder="Creator sprint cut"
         />
         <div className="mt-4">
@@ -47,6 +51,17 @@ export default function EditorControls({
               Processing in progress. Please wait to upload a new video.
             </p>
           )}
+        </div>
+
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            id="smartZoom"
+            type="checkbox"
+            checked={settings?.smartZoom !== false}
+            onChange={(e) => onSettingsChange({ ...(settings || {}), smartZoom: e.target.checked })}
+            className="h-4 w-4 rounded"
+          />
+          <label htmlFor="smartZoom" className="text-sm text-white/80">Smart Zoom (recommended)</label>
         </div>
       </div>
 

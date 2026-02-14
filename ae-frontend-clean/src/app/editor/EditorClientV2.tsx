@@ -75,6 +75,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [jobResp, setJobResp] = useState<JobResponse | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const jobStartRef = useRef<number | null>(null)
+  const [smartZoom, setSmartZoom] = useState<boolean>(true)
 
   async function startEditorPipeline(file: File) {
     if (!authReady) {
@@ -173,7 +174,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
       console.log(`Firebase upload complete: ${storagePath}`)
 
-      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream" }
+      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream", smartZoom: smartZoom }
 
       // Validate before sending
       if (!payload.storagePath || !payload.downloadURL) {
@@ -511,6 +512,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
               </div>
 
               <div className="mt-3 text-xs text-white/60">Tips: MP4/MOV/WEBM supported — up to 1 GB.</div>
+              <div className="mt-3 flex items-center gap-2">
+                <input id="v2-smartzoom" type="checkbox" checked={smartZoom} onChange={(e)=>setSmartZoom(e.target.checked)} className="h-4 w-4" />
+                <label htmlFor="v2-smartzoom" className="text-xs text-white/80">Smart Zoom (recommended)</label>
+              </div>
             </div>
 
             <div className="p-4 rounded-lg bg-white/2 border border-white/6">
