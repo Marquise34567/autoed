@@ -544,18 +544,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             </div>
 
             <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-              <div className="text-sm text-white/70">Result preview</div>
-              {jobResp?.result?.videoUrl ? (
-                <video src={jobResp.result.videoUrl} controls className="mt-3 w-full rounded-md bg-black" />
-              ) : previewLoading ? (
-                <div className="mt-3 text-sm text-white/60">Loading preview…</div>
-              ) : (
-                <div className="mt-3 text-sm text-white/60">No result yet</div>
-              )}
-            </div>
-
-            <div className="p-4 rounded-lg bg-white/2 border border-white/6">
-              <JobDetails hook={jobResp?.hook ?? null} segments={jobResp?.segments ?? null} />
+              <div className="text-sm text-white/70">Result</div>
+              <div className="mt-3">
+                {status === 'done' && (jobResp?.result?.videoUrl || previewUrl) ? (
+                  <button onClick={() => setShowPreview(true)} className="px-4 py-2 rounded-full font-semibold shadow bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white">Open Preview</button>
+                ) : (
+                  <div className="text-sm text-white/60">Preview will be available when processing completes</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -568,6 +564,30 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   return (
     <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
       {card}
+
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-4xl bg-[#07090f] p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-white font-semibold">Preview</div>
+              <button onClick={() => setShowPreview(false)} className="text-white/60">Close</button>
+            </div>
+            <div>
+              {previewLoading ? (
+                <div className="text-white/60">Loading preview…</div>
+              ) : previewError ? (
+                <div className="text-red-400">{previewError}</div>
+              ) : previewUrl ? (
+                <video src={previewUrl} controls autoPlay className="w-full rounded-md bg-black" />
+              ) : jobResp?.result?.videoUrl ? (
+                <video src={jobResp.result.videoUrl} controls autoPlay className="w-full rounded-md bg-black" />
+              ) : (
+                <div className="text-white/60">No preview available</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -12,8 +12,10 @@ export default function EditorShell({ children }: { children: React.ReactNode })
       </div>
 
       <div className="h-full w-full p-6 pt-6 pb-6 overflow-auto">
-        <div className="h-full w-full rounded-none bg-transparent p-0">
-          {children}
+        <div className="mx-auto h-full w-full p-6" style={{ maxWidth: '1400px' }}>
+          <div className="surface p-6">
+            {children}
+          </div>
         </div>
       </div>
     </main>

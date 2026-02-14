@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary-500: #6c5ce7; /* violet */
+  --primary-600: #5b4bd6;
+  --accent-400: #00d4ff; /* cyan accent */
+  --surface: #ffffff;
+  --surface-2: #f7f8fb;
+  --muted: #8a8f98;
+  --glass: rgba(255,255,255,0.6);
+  --card-radius: 12px;
+  --elevation-1: 0 6px 20px rgba(17, 24, 39, 0.08);
+  --elevation-2: 0 18px 50px rgba(17, 24, 39, 0.12);
 }
 
 @theme inline {
@@ -22,6 +32,57 @@
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Premium/base utilities */
+html,body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+
+.surface {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border-radius: var(--card-radius);
+  box-shadow: var(--elevation-1);
+}
+
+.panel {
+  background: transparent;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.premium-btn {
+  background-image: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(108,92,231,0.18);
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+.premium-btn:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(108,92,231,0.22); }
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.5));
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--elevation-2);
+}
+
+.toolbar {
+  background: linear-gradient(180deg, rgba(250,250,252,0.6), rgba(245,245,250,0.45));
+  backdrop-filter: blur(6px) saturate(120%);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.muted { color: var(--muted); }
+
+/* glass variant for dark/light-aware subtle surfaces */
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border-radius: 10px;
+  padding: 10px;
 }
 
 /* hide horizontal scrollbars for compact steppers while keeping scroll behavior */
