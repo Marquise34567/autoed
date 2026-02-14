@@ -66,9 +66,11 @@ export async function uploadVideoToStorage(
     if (!uploadUrl) throw new Error('Missing uploadUrl')
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: {
-        'Content-Type': file.type || 'application/octet-stream'
-      },
+      // IMPORTANT: do NOT set any headers (including Content-Type).
+      // Google Cloud Storage signed URLs are sensitive to signed headers; adding
+      // a Content-Type header here can cause SignatureDoesNotMatch errors if the
+      // backend signed a different header set. Sending the raw file body without
+      // custom headers ensures the request matches the signed URL.
       body: file,
     })
 
