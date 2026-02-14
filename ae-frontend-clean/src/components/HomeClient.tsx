@@ -48,8 +48,8 @@ export default function HomeClient() {
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/70">
             Premium AI Auto-Editor
           </div>
-          <h1 className="mt-6 sm:mt-8 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight px-2">
-            We Cut The Boring Parts so your videos actually get watched
+          <h1 className="mt-6 sm:mt-8 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-slate-200/80 px-2">
+            We Built an Editor That Thinks Like Top Creators.
           </h1>
           <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg text-white/70 px-4">
             AutoEditor analyzes your footage, identifies the best moments, selects

@@ -7,6 +7,27 @@ import { MobileNav } from "@/components/MobileNav"
 import { PLANS } from "@/config/plans"
 import { EDITOR_ROUTE, LOGIN_ROUTE } from '@/lib/routes'
 
+export const metadata = {
+  title: "AutoEditor – AI Video Editor for YouTube Creators",
+  description:
+    "AutoEditor is an AI video editor that automatically adds hooks, removes boring parts, improves pacing, and maximizes audience retention for content creators.",
+  keywords: [
+    "AI video editor",
+    "AI YouTube editor",
+    "automatic video editor",
+    "AI video editing software",
+    "video editor for YouTube",
+    "AI content creator tool",
+    "retention video editor",
+    "automatic jump cut editor",
+    "remove silence automatically",
+    "AI hook generator",
+    "smart video editor",
+    "best AI video editor",
+    "AI editing for creators"
+  ],
+};
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#07090f] text-white overflow-x-hidden">
@@ -29,7 +50,7 @@ export default function Home() {
       <main className="relative z-10 overflow-x-hidden">
         <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-16 text-center pt-12 pb-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-wider text-white/70">Premium AI Auto-Editor</div>
-          <h1 className="mt-6 text-4xl font-semibold animate-fade-up fade-delay-1">We Cut The Boring Parts so your videos actually get watched</h1>
+          <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-slate-200/80 animate-fade-up fade-delay-1">We Built an Editor That Thinks Like Top Creators.</h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-white/70 animate-fade-up fade-delay-2">AutoEditor analyzes your footage, identifies the best moments, selects the perfect hook, and renders creator-ready clips with studio-grade audio enhancement.</p>
           <div className="mt-6 flex justify-center gap-4 items-center">
             <SignupButton
