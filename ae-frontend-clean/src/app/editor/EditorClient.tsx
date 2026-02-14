@@ -147,13 +147,19 @@ export default function EditorClientPage() {
           console.warn('[poll] received', r.status)
           return
         }
-        const job = await r.json()
+        const data = await r.json()
+        // backend wraps job in { ok: true, job: { ... } }
+        const job = data?.job || data
         if (!job) return
+        console.log('Polled status:', job.status)
         const prog = typeof job.progress === 'number' ? job.progress : (typeof job.overallProgress === 'number' ? job.overallProgress : 0)
         setProgressStep(Math.round(prog * 100))
         setJobStatus(job.status || job.phase || '')
         if ((job.status || job.phase || '').toLowerCase() === 'done') {
           if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          // set output URL from job payload
+          const resultUrl = job.resultUrl || job.result?.videoUrl || job.outputUrl
+          if (resultUrl) setOutputUrl(resultUrl)
           setGenerationDone(true)
         }
       } catch (e) {

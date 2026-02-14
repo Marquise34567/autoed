@@ -104,18 +104,17 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
   const fetchDownloadUrl = async () => {
     if (!jobId) throw new Error('Missing jobId')
-    const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('Not signed in')
-    const idToken = await currentUser.getIdToken(true)
-    const resp = await fetch(`${API_BASE}/api/video/download`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ jobId }),
-    })
-    const j = await safeJson(resp)
-    if (!resp.ok) throw new Error(j?.error || 'Failed to generate download URL')
-    if (!j?.url) throw new Error('Missing download URL')
-    return j.url
+    // Prefer the result URL from the polled job state
+    if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
+    // Fallback: query job status endpoint for the job wrapper
+    const resp = await fetch(`${API_BASE}/api/jobs?id=${encodeURIComponent(jobId)}`)
+    if (!resp.ok) throw new Error('Failed to fetch job')
+    const data: any = await resp.json()
+    if (!data?.job) throw new Error('Missing job data')
+    const url = data.job.resultUrl || data.job.result?.videoUrl || data.job.result?.url || data.job.outputUrl
+    if (!url) throw new Error('Missing result URL')
+    console.log('RESULT URL:', url)
+    return url
   }
 
   function openFilePicker() {
