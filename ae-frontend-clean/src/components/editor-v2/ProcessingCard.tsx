@@ -41,7 +41,16 @@ export default function ProcessingCard({
   smartZoom?: boolean
   errorMessage?: string | null
 }) {
-  const pct = Math.max(0, Math.min(100, Math.round((jobResp?.progress ?? overallProgress || 0) * 100)))
+  // Normalize progress: prefer jobResp?.progress, then overallProgress, then 0
+  const rawProgress = jobResp?.progress ?? overallProgress ?? 0
+  const progress = typeof rawProgress === 'number' && Number.isFinite(rawProgress) ? rawProgress : 0
+  let pct = 0
+  if (progress <= 1) {
+    pct = Math.round(progress * 100)
+  } else {
+    pct = Math.round(progress)
+  }
+  pct = Math.max(0, Math.min(100, pct))
 
   const stages = useMemo(
     () => [
