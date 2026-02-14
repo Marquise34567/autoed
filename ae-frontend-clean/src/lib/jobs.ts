@@ -118,12 +118,7 @@ function looksLikeUrl(value: string) {
   if (v.includes('?')) return true
   return (
     v.includes('http://') ||
-    v.includes('https://') ||
-    v.includes('storage.googleapis.com') ||
-    v.includes('GoogleAccessId=') ||
-    v.includes('X-Goog-Algorithm') ||
-    v.includes('X-Goog-Credential') ||
-    v.includes('X-Goog-Signature')
+    v.includes('https://')
   )
 }
 

@@ -165,7 +165,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobResp(null)
     setJobId(undefined)
     try {
-      // Upload file to storage to get a storagePath (signed URL flow)
+      // Upload file to Firebase Storage using client SDK to get a storagePath
       const onProgress = (pct: number) => {
         try { setOverallProgress(Math.round(pct)) } catch (_) {}
       }

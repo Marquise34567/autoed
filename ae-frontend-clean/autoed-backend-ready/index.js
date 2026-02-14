@@ -79,65 +79,8 @@ app.options('*', cors(corsOptions))
 app.get('/health', (_req, res) => res.json({ ok: true }))
 app.get('/', (_req, res) => res.json({ message: 'autoed-backend-ready' }))
 
-// Upload URL route: returns signed URL for client to PUT upload to Firebase Storage
-// Test with curl (replace values):
-// curl -X POST https://your-backend.example.com/api/upload-url \
-//  -H "Content-Type: application/json" \
-//  -d '{"filename":"test.mp4","contentType":"video/mp4"}'
-// Expected success JSON: { ok:true, signedUrl:"https://...", bucket:"...", path:"uploads/<ts>-test.mp4", expiresInSeconds:900 }
-// Expected failure JSON: { ok:false, error:"<message>", code:"<optional>" }
-app.post('/api/upload-url', async (req, res) => {
-  try {
-    const init = initFirebaseAdmin()
-    if (!init.ok) {
-      return res.status(500).json({ ok: false, error: init.error || 'Failed to initialize Firebase Admin' })
-    }
-
-    const { filename, contentType, pathPrefix } = req.body || {}
-    if (!filename || !contentType) {
-      return res.status(400).json({ ok: false, error: 'Missing required fields: filename and contentType' })
-    }
-
-    // sanitize filename
-    const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
-    const timestamp = Date.now()
-
-    // Optional path prefix (must be a simple folder-like segment), sanitize and strip dangerous chars
-    let prefix = ''
-    if (pathPrefix) {
-      prefix = String(pathPrefix).replace(/[^a-zA-Z0-9_\-\/]/g, '')
-      // remove leading/trailing slashes
-      prefix = prefix.replace(/^\/+|\/+$/g, '')
-      if (prefix) prefix = prefix + '/'
-    }
-
-    const path = `${prefix}uploads/${timestamp}-${safeName}`
-
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET
-    const bucket = admin.storage().bucket()
-    const file = bucket.file(path)
-
-    const expiresInSeconds = 15 * 60 // 15 minutes
-    const expiresAt = Date.now() + expiresInSeconds * 1000
-    const options = {
-      version: 'v4',
-      action: 'write',
-      expires: expiresAt,
-      contentType: contentType
-    }
-
-    const [signedUrl] = await file.getSignedUrl(options)
-    if (!signedUrl) {
-      return res.status(500).json({ ok: false, error: 'Missing signed URL from Firebase' })
-    }
-
-    // Return a clear, modern response shape: uploadUrl, path, expiresAt
-    return res.json({ ok: true, uploadUrl: signedUrl, path, expiresAt })
-  } catch (err) {
-    console.error('/api/upload-url error:', err && err.message ? err.message : err)
-    return res.status(500).json({ ok: false, error: (err && err.message) ? err.message : String(err) })
-  }
-})
+// Signed URL endpoints removed: frontend must use Firebase Web SDK `uploadBytesResumable`.
+// This server intentionally does not provide signed upload URLs.
 
 // Minimal userdoc route expected by frontend
 app.get('/api/userdoc', (req, res) => {
@@ -173,22 +116,31 @@ app.get('/userdoc', (req, res) => {
 // Jobs route for frontend POSTs
 app.post('/jobs', async (req, res) => {
   try {
-    const { filePath, downloadURL, uid, jobId, options } = req.body || {}
+    // Expect `storagePath` (relative path within Firebase Storage bucket) and optional `downloadURL`.
+    const { storagePath, downloadURL, uid, jobId, options } = req.body || {}
 
-    if (!filePath && !downloadURL) {
-      return res.status(400).json({ error: 'Missing filePath or downloadURL' })
+    if (!storagePath) {
+      return res.status(400).json({ error: 'Missing required field: storagePath' })
     }
     if (!uid) {
       return res.status(400).json({ error: 'Missing uid' })
     }
 
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET
+    if (!bucketName) return res.status(500).json({ error: 'Server misconfiguration: FIREBASE_STORAGE_BUCKET missing' })
+
+    // Normalize storagePath: strip leading slashes if present
+    const normalizedPath = String(storagePath).replace(/^\/+/, '')
+    const gsUri = `gs://${bucketName}/${normalizedPath}`
+
     const createdJobId = jobId || randomUUID()
 
-    // Accept job and return confirmation
+    // Here, the worker/process that handles the job should read the original
+    // video from `gsUri`. We return the accepted job info including canonical gsUri.
     return res.status(200).json({
       ok: true,
       jobId: createdJobId,
-      received: { filePath, downloadURL, uid },
+      received: { storagePath: normalizedPath, downloadURL: downloadURL || null, uid, gsUri },
       message: 'Job accepted'
     })
   } catch (err) {
