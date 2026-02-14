@@ -64,15 +64,28 @@ export async function uploadVideoToStorage(
   // Follow the strict pattern: use PUT, send only Content-Type header, and raw file as body.
   try {
     if (!uploadUrl) throw new Error('Missing uploadUrl')
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      // IMPORTANT: do NOT set any headers (including Content-Type).
-      // Google Cloud Storage signed URLs are sensitive to signed headers; adding
-      // a Content-Type header here can cause SignatureDoesNotMatch errors if the
-      // backend signed a different header set. Sending the raw file body without
-      // custom headers ensures the request matches the signed URL.
-      body: file,
-    })
+    // Detect whether the signed URL explicitly requires the Content-Type header
+    // by reading the `X-Goog-SignedHeaders` query param. If the signed headers
+    // include `content-type`, we must set it exactly; otherwise we omit headers.
+    let uploadResponse: Response
+    try {
+      const urlObj = new URL(uploadUrl)
+      const signedHeaders = (urlObj.searchParams.get('X-Goog-SignedHeaders') || urlObj.searchParams.get('x-goog-signedheaders') || '').toLowerCase()
+      if (signedHeaders.includes('content-type')) {
+        uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        })
+      } else {
+        uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+        })
+      }
+    } catch (err) {
+      throw new Error(`Upload request error: ${String(err)}`)
+    }
 
     if (!uploadResponse.ok) {
       const text = await uploadResponse.text().catch(() => '')
