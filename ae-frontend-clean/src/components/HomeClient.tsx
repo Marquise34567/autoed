@@ -8,9 +8,14 @@ import { MobileNav } from "@/components/MobileNav";
 import { PLANS } from "@/config/plans";
 import { EDITOR_ROUTE, LOGIN_ROUTE } from '@/lib/routes'
 import { useAuth } from '@/lib/auth/useAuth'
+import { useState } from 'react'
+import HomeDemoEditor from '@/components/HomeDemoEditor'
+import LoginForm from '@/components/Auth/LoginForm'
 
 export default function HomeClient() {
   const { user, authReady } = useAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<'login'|'signup'>('login')
 
   return (
     <div className="min-h-screen bg-[#07090f] text-white overflow-x-hidden">
@@ -25,9 +30,17 @@ export default function HomeClient() {
           <span className="text-base sm:text-lg font-semibold tracking-tight">AutoEditor</span>
           <BetaBadge />
         </div>
-        <MobileNav>
-          <UserNav />
-        </MobileNav>
+        <div className="flex items-center gap-4">
+          {!authReady || !user ? (
+            <>
+              <button onClick={()=>{ setShowAuthModal(true); setAuthMode('login') }} className="rounded-full border border-white/20 px-4 py-2 text-white/80 transition hover:border-white/40 hover:text-white">Sign in</button>
+              <button onClick={()=>{ setShowAuthModal(true); setAuthMode('signup') }} className="rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold px-4 py-2">Sign up</button>
+            </>
+          ) : null}
+          <MobileNav>
+            <UserNav />
+          </MobileNav>
+        </div>
       </header>
 
       <main className="relative z-10 overflow-x-hidden">
@@ -54,32 +67,21 @@ export default function HomeClient() {
           {/* Editor Demo Preview */}
           {!user && (
             <div className="mt-10 sm:mt-16 mx-auto max-w-4xl w-full px-2 sm:px-0">
-              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-linear-to-b from-white/5 to-white/0 p-4 sm:p-8 backdrop-blur overflow-hidden">
-                {/* Mock Editor Interface (static preview for unauthenticated users) */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-white/10">
-                    <div className="text-base sm:text-lg font-semibold">Auto-Editor</div>
-                    <div className="flex gap-1.5 sm:gap-2">
-                      <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                      <span className="text-xs text-white/50 hidden sm:inline">Processing</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs sm:text-sm font-medium text-white/70">Video Analysis</div>
-                    <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-center">
-                      <div className="mb-3 sm:mb-4 text-2xl sm:text-3xl">📹</div>
-                      <p className="text-sm text-white/60">Analyzing video...</p>
-                      <div className="mt-3 sm:mt-4 w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                        <div className="bg-blue-500 h-full w-2/3 rounded-full"></div>
-                      </div>
-                      <p className="text-xs text-white/40 mt-2">2m 45s detected</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <HomeDemoEditor />
             </div>
           )}
+        
+        {/* Auth Modal for landing page only */}
+        {showAuthModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowAuthModal(false)} />
+            <div className="relative z-10 max-w-lg w-full mx-4">
+              <div className="p-2">
+                <LoginForm initialMode={authMode} />
+              </div>
+            </div>
+          </div>
+        )}
         </section>
       </main>
     </div>

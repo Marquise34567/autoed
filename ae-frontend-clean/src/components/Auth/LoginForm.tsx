@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/useAuth'
 import { EDITOR_ROUTE } from '@/lib/routes'
 
-export default function LoginForm() {
+export default function LoginForm({ initialMode }: { initialMode?: 'login' | 'signup' } = {}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login, signup, user, authReady } = useAuth()
@@ -22,8 +22,8 @@ export default function LoginForm() {
     } catch (_) {}
   }, [authReady, user])
 
-  const initialMode = searchParams?.get('mode') === 'signup' ? 'signup' : 'login'
-  const [mode, setMode] = useState<'login'|'signup'>(initialMode)
+  const paramMode = searchParams?.get('mode') === 'signup' ? 'signup' : 'login'
+  const [mode, setMode] = useState<'login'|'signup'>(initialMode || paramMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
