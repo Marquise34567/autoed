@@ -24,6 +24,12 @@ export async function uploadVideoToStorage(
 
   console.log(`[storage-upload] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
 
+  // Determine exact contentType to use for signing and upload.
+  const contentType =
+    file.name.toLowerCase().endsWith('.mkv') || (file.type || '').toLowerCase().includes('matroska')
+      ? 'video/matroska'
+      : (file.type || 'application/octet-stream')
+
   // Step 1: Get the signed upload URL from the server
   console.log(`[storage-upload] Requesting signed URL from ${API_BASE}/api/upload-url...`)
   const uploadUrlResponse = await fetch(`${API_BASE}/api/upload-url`, {
@@ -31,7 +37,7 @@ export async function uploadVideoToStorage(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       filename: file.name,
-      contentType: file.type,
+      contentType: contentType,
       size: file.size,
     }),
   })
@@ -73,13 +79,13 @@ export async function uploadVideoToStorage(
       const urlObj = new URL(uploadUrl)
       signedHeaders = (urlObj.searchParams.get('X-Goog-SignedHeaders') || urlObj.searchParams.get('x-goog-signedheaders') || '').toLowerCase()
       console.log(`[storage-upload] signedHeaders for uploadUrl: ${signedHeaders}`)
-      console.log(`[storage-upload] contentType requested for signing: ${file.type}`)
+      console.log(`[storage-upload] contentType used for signing/upload: ${contentType}`)
 
       if (signedHeaders.includes('content-type')) {
         console.log('[storage-upload] PUT will include Content-Type header')
         uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          headers: { 'Content-Type': contentType },
           body: file,
         })
       } else {
@@ -101,7 +107,7 @@ export async function uploadVideoToStorage(
       // but some signers use `video/matroska`. Retry with stripped `x-` prefix.
       if (uploadResponse.status === 403 && signedHeaders.includes('content-type')) {
         try {
-          const altType = file.type.replace('x-', '')
+          const altType = contentType.replace('x-', '')
           if (altType && altType !== file.type) {
             console.log(`[storage-upload] retrying upload with alternative Content-Type: ${altType}`)
             const retryResp = await fetch(uploadUrl, {
