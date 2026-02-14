@@ -105,10 +105,16 @@ export default function EditorClientPage() {
         setProgressStep(Math.round(pct))
       }
       const { storagePath } = await uploadVideoToStorage(file, onProgress)
+      const payload = { path: storagePath, filename: file.name, contentType: file.type }
+      // Validate required fields before calling API
+      if (!payload.path || !payload.filename || !payload.contentType) {
+        throw new Error('Missing required upload metadata (path, filename, contentType)')
+      }
+      console.log('[startEditorPipeline] POST', `${API_BASE}/api/jobs`, payload)
       const createResp = await fetch(`${API_BASE}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: storagePath }),
+        body: JSON.stringify(payload),
       })
       const createJson = await safeJson(createResp)
       if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')

@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth/useAuth'
 import { requirePremium } from '@/lib/subscription'
 import { useRouter } from 'next/navigation'
 import { safeJson } from '@/lib/client/safeJson'
+import { uploadVideoToStorage } from '@/lib/client/storage-upload'
 // Use the explicit env var as requested; fallback to the central API_BASE if available
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || CENTRAL_API_BASE
@@ -163,15 +164,36 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobResp(null)
     setJobId(undefined)
     try {
-      const fd = new FormData()
-      fd.append('video', file)
+      // Upload file to storage to get a storagePath (signed URL flow)
+      const onProgress = (pct: number) => {
+        try { setOverallProgress(Math.round(pct)) } catch (_) {}
+      }
+      const { storagePath } = await uploadVideoToStorage(file, onProgress)
+
+      const payload = {
+        path: storagePath,
+        filename: file.name,
+        contentType: file.type,
+      }
+
+      // Validate before sending
+      if (!payload.path || !payload.filename || !payload.contentType) {
+        setErrorMessage('Missing required upload metadata (path, filename, or contentType)')
+        setStatus('error')
+        setIsUploading(false)
+        return
+      }
+
       const current = auth.currentUser
-      const headers: Record<string,string> = {}
+      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
       if (current) {
         const t = await current.getIdToken(true)
         headers['Authorization'] = `Bearer ${t}`
       }
-      const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', body: fd, headers })
+
+      console.log('[createJobWithFile] POST', `${API_BASE}/api/jobs`, payload)
+
+      const resp = await fetch(`${API_BASE}/api/jobs`, { method: 'POST', headers, body: JSON.stringify(payload) })
       const j = await safeJson(resp)
       if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
       const jid = j.jobId || j.jobID || j.id
