@@ -1,73 +1,93 @@
-import { NextResponse } from "next/server";
+export const runtime = 'edge';
 
-const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN;
+const HOP_BY_HOP = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade',
+  'host',
+]);
 
-function buildTargetUrl(origin: string, pathParts: string[], search: string) {
-  const cleanOrigin = origin.replace(/\/+$/, "");
-  const cleanPath = pathParts.join("/").replace(/^\/+/, "");
-  return `${cleanOrigin}/api/${cleanPath}${search}`;
+function stripHopByHop(incoming: Headers): Headers {
+  const out = new Headers();
+  for (const [k, v] of incoming) {
+    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
+    out.set(k, v);
+  }
+  return out;
 }
 
-async function proxyHandler(
-  req: Request,
-  context: { params: { path?: string[] } }
-) {
-  let targetUrl: string | null = null
-  try {
-    if (!BACKEND_ORIGIN) {
-      return NextResponse.json(
-        {
-          error: "Missing BACKEND_ORIGIN",
-          hint: "Set BACKEND_ORIGIN in Vercel Production env vars",
-        },
-        { status: 500 }
-      );
-    }
-
-    const { path = [] } = context.params;
-    const url = new URL(req.url);
-
-    targetUrl = buildTargetUrl(
-      BACKEND_ORIGIN,
-      path,
-      url.search || ""
-    );
-
-    const headers = new Headers(req.headers);
-    headers.delete("host");
-    headers.delete("content-length");
-
-    const method = req.method.toUpperCase();
-    const hasBody = !["GET", "HEAD"].includes(method);
-
-    const upstream = await fetch(targetUrl, {
-      method,
-      headers,
-      body: hasBody ? req.body : undefined,
-      // @ts-ignore
-      duplex: "half",
-      cache: "no-store",
-    });
-
-    const resHeaders = new Headers(upstream.headers);
-    resHeaders.set("x-proxy-target", targetUrl);
-
-    return new NextResponse(upstream.body, {
-      status: upstream.status,
-      headers: resHeaders,
-    });
-  } catch (err: any) {
-    const detail = err?.message || String(err)
-    const target = typeof targetUrl === 'string' ? targetUrl : null
-    return NextResponse.json(
-      {
-        error: "Proxy fetch failed",
-        detail,
-        target,
-      },
-      { status: 502 }
-    );
+function filterResponseHeaders(upstream: Headers): Headers {
+  const out = new Headers();
+  for (const [k, v] of upstream) {
+    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
+    out.set(k, v);
   }
+  return out;
+}
+
+function buildTarget(origin: string, pathParts: string[], search: string) {
+  const cleanOrigin = origin.replace(/\/+$/, '');
+  const parts = Array.isArray(pathParts) ? [...pathParts] : [];
+  if (parts.length > 0 && parts[0].toLowerCase() === 'api') parts.shift();
+  const cleanPath = parts.map(p => encodeURIComponent(p)).join('/');
+  const pathSegment = cleanPath ? `/api/${cleanPath}` : '/api';
+  return `${cleanOrigin}${pathSegment}${search || ''}`;
+}
+
+async function proxyHandler(req: Request, ctx: { params?: { path?: string[] } }): Promise<Response> {
+  const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN;
+  if (!BACKEND_ORIGIN) {
+    const body = JSON.stringify({ ok: false, error: 'Missing BACKEND_ORIGIN' });
+    const headers = new Headers({ 'content-type': 'application/json' });
+    headers.set('x-proxy-target', '');
+    return new Response(body, { status: 500, headers });
+  }
+
+  const url = new URL(req.url);
+  const search = url.search || '';
+  const pathParts = ctx?.params?.path ?? [];
+  const target = buildTarget(BACKEND_ORIGIN, pathParts, search);
+
+  const forwardHeaders = stripHopByHop(req.headers);
+  forwardHeaders.delete('content-length');
+  forwardHeaders.delete('host');
+
+  const method = req.method.toUpperCase();
+  const hasBody = !['GET', 'HEAD'].includes(method);
+
+  const init: RequestInit & { duplex?: 'half' } = {
+    method,
+    headers: forwardHeaders,
+    redirect: 'manual',
+  };
+
+  if (hasBody) {
+    // @ts-ignore duplex supported in edge runtime
+    init.body = req.body ?? undefined;
+    init.duplex = 'half';
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(target, init as RequestInit);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const payload = JSON.stringify({ ok: false, error: 'Proxy fetch failed', detail: message, target });
+    const headers = new Headers({ 'content-type': 'application/json' });
+    headers.set('x-proxy-target', target);
+    return new Response(payload, { status: 502, headers });
+  }
+
+  // Pass through upstream response exactly (status + body), but ensure headers are filtered
+  const respHeaders = filterResponseHeaders(upstream.headers);
+  respHeaders.set('x-proxy-target', target);
+
+  return new Response(upstream.body, { status: upstream.status, headers: respHeaders });
 }
 
 export const GET = proxyHandler;
@@ -76,3 +96,4 @@ export const PUT = proxyHandler;
 export const PATCH = proxyHandler;
 export const DELETE = proxyHandler;
 export const OPTIONS = proxyHandler;
+export const HEAD = proxyHandler;
