@@ -22,13 +22,14 @@ export async function getOrCreateUserDoc(_uid: string) {
     const res = await apiFetch('/api/proxy/userdoc', { headers, cache: 'no-store' })
     if (!res.ok) {
       console.warn('[userdoc] server responded non-OK', res.status)
-      return { plan: 'starter', status: 'unknown', source: 'fallback' }
+      // Fallback so editor remains usable even when userdoc fetch fails
+      return { plan: 'starter', rendersLeft: 12, uid: null }
     }
     const data = await res.json()
     console.info('[userdoc] server data', data)
     return data
   } catch (err) {
-    console.warn('[userdoc] fetch failed, returning fallback', err)
-    return { plan: 'starter', status: 'unknown', source: 'fallback' }
+    console.warn('[userdoc] fetch failed, using fallback userdoc')
+    return { plan: 'starter', rendersLeft: 12, uid: null }
   }
 }
