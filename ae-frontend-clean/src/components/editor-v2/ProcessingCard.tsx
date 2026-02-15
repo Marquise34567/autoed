@@ -98,7 +98,7 @@ export default function ProcessingCard({
   }
 
   return (
-    <div className="p-4 rounded-[22px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] border border-white/6 backdrop-blur-xl shadow-2xl">
+    <div className="p-4 sm:p-6 rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] border border-white/6 backdrop-blur-xl shadow-lg">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm text-white/70">AI Editor Pipeline</div>
@@ -125,8 +125,8 @@ export default function ProcessingCard({
           {stages.map((st) => {
             const active = st.key === activeStageKey
             return (
-              <div key={st.key} className={`px-3 py-1 rounded-full text-xs font-semibold ${active ? 'bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white shadow' : 'bg-white/5 text-white/60 border border-white/6'}`}>
-                {st.label}
+              <div key={st.key} className={`px-3 py-1 rounded-full text-xs font-semibold ${active ? 'bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white shadow' : 'bg-white/5 text-white/60 border border-white/6'}`} title={st.label}>
+                <span className="block max-w-40 truncate">{st.label}</span>
               </div>
             )
           })}
@@ -148,14 +148,14 @@ export default function ProcessingCard({
           </div>
         </div>
 
-        <div className="mt-2 text-xs text-white/60">{ACTIVITY_LINES[activityIdx]}</div>
+          <div className="mt-2 text-xs text-white/60 truncate max-w-full">{ACTIVITY_LINES[activityIdx]}</div>
       </div>
 
       <div className="mt-4 flex items-center gap-4">
         <div className="flex-1">
           <div className="text-sm text-white/70">Detected length</div>
-          <div className="text-white font-semibold">{detectedDurationSec ? `Detected length: ${fmtDuration(detectedDurationSec)}` : '—'}</div>
-          {fileName && <div className="text-xs text-white/50 mt-1">{fileName}</div>}
+          <div className="text-white font-semibold">{detectedDurationSec ? fmtDuration(detectedDurationSec) : '—'}</div>
+          {fileName && <div className="text-xs text-white/50 mt-1 truncate max-w-56" title={fileName}>{fileName}</div>}
         </div>
 
         <div className="w-36">
