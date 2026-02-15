@@ -21,7 +21,11 @@ import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
 import { initFetchGuard } from '@/lib/client/fetch-guard'
 initFetchGuard()
 import { apiFetch } from '@/lib/client/apiClient'
+// Prefer explicit env var; fall back to central API_BASE
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
+// Also expose a concrete API_URL per requirements and log it
+const API_URL = (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || 'https://remarkable-comfort-production-4a9a.up.railway.app'
+try { console.log('[api] API_URL =', API_URL) } catch (_) {}
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
@@ -78,6 +82,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [jobResp, setJobResp] = useState<JobResponse | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [lastUploadStatus, setLastUploadStatus] = useState<string | null>(null)
+  const [lastJobsStatus, setLastJobsStatus] = useState<string | null>(null)
+  const [lastJobIdDebug, setLastJobIdDebug] = useState<string | null>(null)
   const jobStartRef = useRef<number | null>(null)
   const [smartZoom, setSmartZoom] = useState<boolean>(true)
   const [completionOpen, setCompletionOpen] = useState(false)
@@ -145,6 +152,20 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     fileInputRef.current?.click()
   }
 
+  // New combined handler: if a file is already selected, start upload; otherwise open picker.
+  function handleUploadButtonClick() {
+    try { console.log('[upload] button clicked (handler)') } catch (_) {}
+    if (selectedFile) {
+      try { console.log('[upload] start', { apiUrl: API_URL, fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
+      createJobWithFile(selectedFile)
+      return
+    }
+    // No file yet — open file picker
+    try { setErrorMessage('Please select a file to upload') } catch (_) {}
+    try { console.error('[upload] no file selected') } catch (_) {}
+    openFilePicker()
+  }
+
   async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0]
     if (!selected) {
@@ -184,22 +205,28 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobResp(null)
     setJobId(undefined)
     try {
+      // Log upload start with API URL and file metadata
+      try { console.log('[upload] start', { apiUrl: API_URL, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
+
       // Try server-side upload first (/api/upload). If it fails, fallback to client upload helper.
       let storagePath: string | undefined = undefined
       let downloadURL: string | undefined = undefined
 
       try {
-        // Use explicit API base for upload
-        const uploadUrl = `${API_BASE.replace(/\/$/, '')}/api/upload`
+        // Perform direct fetch to API_URL /api/upload
+        const uploadUrl = `${API_URL.replace(/\/$/, '')}/api/upload`
         try { console.log('[upload] using uploadUrl ->', uploadUrl) } catch (_) {}
         const fd = new FormData()
         fd.append('file', file)
-        const upResp = await apiFetch(uploadUrl, { method: 'POST', body: fd })
-        if (!upResp.ok) throw new Error('Upload endpoint failed')
-        const ju = await upResp.json()
+        const upResp = await fetch(uploadUrl, { method: 'POST', body: fd })
+        setLastUploadStatus(`upload status: ${upResp.status}`)
+        let ju: any = {}
+        try { ju = await upResp.json().catch(()=>({})) } catch(_) {}
+        try { console.log('[upload] /api/upload status', upResp.status) } catch (_) {}
+        try { console.log('[upload] /api/upload json', ju) } catch (_) {}
+        if (!upResp.ok) throw new Error(`Upload endpoint failed: ${upResp.status}`)
         storagePath = ju.storagePath || ju.path || ju.key
-        downloadURL = ju.originalUrl || ju.downloadURL || ju.url
-        console.log('[upload] server upload response', ju)
+        downloadURL = ju.originalUrl || ju.downloadURL || ju.url || ju.downloadUrl
       } catch (e) {
         console.warn('[upload] server upload failed, falling back to client upload', e)
         const onProgress = (pct: number) => {
@@ -223,13 +250,23 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       console.log('[createJobWithFile] Creating job with', payload)
       console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
-      const jobsUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs`
-      try { console.log('[createJobWithFile] POST', jobsUrl) } catch (_) {}
-      const resp = await apiFetch(jobsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
-      const j = (await safeJson(resp)) as CreateJobResponse
-      if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
-      const jid = j.jobId || j.jobID || j.id
+      const jobsUrl = `${API_URL.replace(/\/$/, '')}/api/jobs`
+      try { console.log('[jobs] POST', jobsUrl) } catch (_) {}
+      // Send the upload response (minimal) as `upload` field to the job create endpoint
+      const jobBody = { upload: { storagePath, downloadURL, filename: file.name }, status: 'queued' }
+      let resp: Response
+      try {
+        resp = await fetch(jobsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(jobBody) })
+      } catch (err) {
+        throw err
+      }
+      setLastJobsStatus(`jobs status: ${resp.status}`)
+      const job = await resp.json().catch(()=>({}))
+      try { console.log('[jobs] /api/jobs status', resp.status) } catch (_) {}
+      try { console.log('[jobs] /api/jobs json', job) } catch (_) {}
+      if (!resp.ok) throw new Error(job?.error || `Job create failed: ${resp.status}`)
+      const jid = job.jobId || job.jobID || job.id || job?.id
+      if (jid) setLastJobIdDebug(String(jid))
       setJobId(jid)
       // record approximate job start time for ETA estimates
       jobStartRef.current = Date.now()
@@ -575,7 +612,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 />
 
                 <button
-                  onClick={openFilePicker}
+                  onClick={handleUploadButtonClick}
                   disabled={isUploading || (status !== 'idle' && status !== 'done')}
                   className={`px-4 py-2 rounded-full font-semibold transition shadow-md ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white hover:shadow-[0_8px_30px_rgba(124,58,237,0.24)]'}`}
                 >
@@ -656,6 +693,15 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   return (
     <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
       {card}
+
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="fixed top-4 right-4 z-50 p-3 space-y-1 text-xs text-white bg-black/60 rounded">
+          <div><strong>API_URL:</strong> {API_URL}</div>
+          <div><strong>lastUploadStatus:</strong> {String(lastUploadStatus)}</div>
+          <div><strong>lastJobsStatus:</strong> {String(lastJobsStatus)}</div>
+          <div><strong>lastJobId:</strong> {String(lastJobIdDebug)}</div>
+        </div>
+      )}
 
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
