@@ -122,14 +122,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const path = `/api/jobs?id=${encodeURIComponent(jobId)}`
-    const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
-    try { console.log('[fetchDownloadUrl] GET', fullUrl) } catch (_) {}
+    const path = `/api/jobs/${encodeURIComponent(jobId)}`
+    try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
     const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
     const data: any = await resp.json()
-    if (!data?.job) throw new Error('Missing job data')
-    const url = data.job.resultUrl || data.job.result?.videoUrl || data.job.result?.url || data.job.outputUrl
+    const jobWrapper = data.job || data
+    if (!jobWrapper) throw new Error('Missing job data')
+    const url = jobWrapper.resultUrl || jobWrapper.result?.videoUrl || jobWrapper.result?.url || jobWrapper.outputUrl
     if (!url) throw new Error('Missing result URL')
     console.log('RESULT URL:', url)
     return url
@@ -184,12 +184,29 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobResp(null)
     setJobId(undefined)
     try {
-      // Upload file to Firebase Storage using client SDK to get a storagePath
-      const onProgress = (pct: number) => {
-        try { setOverallProgress(Math.round(pct)) } catch (_) {}
+      // Try server-side upload first (/api/upload). If it fails, fallback to client upload helper.
+      let storagePath: string | undefined = undefined
+      let downloadURL: string | undefined = undefined
+
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        const upResp = await apiFetch('/api/upload', { method: 'POST', body: fd })
+        if (!upResp.ok) throw new Error('Upload endpoint failed')
+        const ju = await upResp.json()
+        storagePath = ju.storagePath || ju.path || ju.key
+        downloadURL = ju.originalUrl || ju.downloadURL || ju.url
+        console.log('[upload] server upload response', ju)
+      } catch (e) {
+        console.warn('[upload] server upload failed, falling back to client upload', e)
+        const onProgress = (pct: number) => {
+          try { setOverallProgress(Math.round(pct)) } catch (_) {}
+        }
+        const up = await uploadVideoToStorage(file, onProgress)
+        storagePath = up.storagePath
+        downloadURL = up.downloadURL
+        console.log(`Firebase upload complete: ${storagePath}`)
       }
-      const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
-      console.log(`Firebase upload complete: ${storagePath}`)
 
       const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream", smartZoom: smartZoom }
 
@@ -244,7 +261,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `/api/jobs?id=${encodeURIComponent(jid)}`
+        const url = `/api/jobs/${encodeURIComponent(jid)}`
         const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
@@ -254,8 +271,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           }
         } else {
           const data: any = await r.json()
-          if (!data?.job) return
-          const job: JobResponse & any = data.job
+          const job: JobResponse & any = data.job || data
+          if (!job) return
           setJobResp(job)
 
           // Log full response once when job is not 'processing'
@@ -317,10 +334,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         }
       } catch (e: any) {
         console.warn('[poll] fetch error', e)
-        setErrorMessage('Unable to reach server')
-        setStatus('error')
-        cancelled = true
-        return
+        // transient network error — continue polling with backoff until timeout
       }
 
       if (!cancelled) {
@@ -494,6 +508,13 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   // Direct download handler: redirect browser to backend download endpoint
   const handleDownload = (jid?: string) => {
     if (!jid) return
+    // Prefer direct result URL if available
+    const resultUrl = jobResp?.result?.videoUrl || previewUrl
+    if (resultUrl) {
+      try { window.open(resultUrl, '_blank') } catch (e) { console.warn('Open result url failed', e) }
+      return
+    }
+    // Fallback: use backend download endpoint proxied via Next.js
     const path = `/api/jobs/${jid}/download`
     const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
