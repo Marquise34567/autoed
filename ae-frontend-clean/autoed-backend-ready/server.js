@@ -59,9 +59,26 @@ app.get('/health', (_req, res) => res.json({ ok: true }))
 // POST /api/jobs — create a job record (no processing here)
 app.post('/api/jobs', async (req, res) => {
   try {
-    const { storagePath, downloadURL, uid, jobId, options } = req.body || {}
+    const { storagePath, downloadURL, uid: bodyUid, jobId, options } = req.body || {}
+
+    // Prefer Firebase ID token in Authorization header; fall back to provided uid
+    let uid = bodyUid || null
+    const authHeader = req.headers.authorization || req.headers.Authorization || ''
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1]
+      const fb = initFirebaseAdmin()
+      if (!fb.ok) return res.status(500).json({ error: 'Firebase admin not configured' })
+      try {
+        const decoded = await admin.auth().verifyIdToken(token)
+        uid = decoded.uid
+      } catch (err) {
+        console.warn('Invalid ID token on /api/jobs:', err && err.message ? err.message : err)
+        return res.status(401).json({ error: 'Invalid ID token' })
+      }
+    }
+
     if (!storagePath) return res.status(400).json({ error: 'Missing required field: storagePath' })
-    if (!uid) return res.status(400).json({ error: 'Missing uid' })
+    if (!uid) return res.status(401).json({ error: 'Missing uid or valid ID token' })
 
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET
     if (!bucketName) return res.status(500).json({ error: 'Server misconfiguration: FIREBASE_STORAGE_BUCKET missing' })
@@ -71,8 +88,8 @@ app.post('/api/jobs', async (req, res) => {
     const createdJobId = jobId || randomUUID()
 
     // Persist a minimal job record in Firestore so the worker can pick it up
-    const fb = initFirebaseAdmin()
-    if (!fb.ok) return res.status(500).json({ error: 'Firebase admin not configured' })
+    const fb2 = initFirebaseAdmin()
+    if (!fb2.ok) return res.status(500).json({ error: 'Firebase admin not configured' })
     const db = admin.firestore()
     const docRef = db.collection('jobs').doc(createdJobId)
     const now = Date.now()

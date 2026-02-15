@@ -3,14 +3,15 @@
  * using the Web SDK's resumable upload API (`uploadBytesResumable`).
  */
 
-import { apiFetch } from '@/lib/client/apiClient'
+import { auth, storage, isFirebaseConfigured } from '@/lib/firebase.client'
+import { ref, uploadBytesResumable } from 'firebase/storage'
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 
 export async function uploadVideoToStorage(
   file: File,
-  onProgress?: (percent: number) => void
-): Promise<{ storagePath: string; jobId: string }> {
+  onProgress?: (percent: number, transferred?: number, total?: number) => void
+): Promise<{ storagePath: string }> {
   if (!file.name) throw new Error('Invalid file')
 
   if (!file.type.startsWith('video/') && !file.name.toLowerCase().endsWith('.mkv')) {
@@ -23,39 +24,34 @@ export async function uploadVideoToStorage(
     )
   }
 
-  try { if (onProgress) onProgress(0) } catch (_) {}
+  if (!isFirebaseConfigured() || !auth || !storage) {
+    throw new Error('Firebase is not configured in the browser. Set NEXT_PUBLIC_FIREBASE_* env vars.')
+  }
 
-  // STEP 1: Request a signed upload URL (small JSON call via proxy)
-  const signedResp = await apiFetch('/api/proxy/upload-url', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
+  const user = auth.currentUser
+  if (!user) throw new Error('Not authenticated')
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `uploads/${user.uid}/${Date.now()}-${safeName}`
+
+  const storageRef = ref(storage, path)
+
+  return await new Promise((resolve, reject) => {
+    try { if (onProgress) onProgress(0, 0, file.size) } catch (_) {}
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/octet-stream' })
+    task.on(
+      'state_changed',
+      (snap) => {
+        try {
+          const pct = snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0
+          if (onProgress) onProgress(pct, snap.bytesTransferred, snap.totalBytes)
+        } catch (_) {}
+      },
+      (err) => reject(err),
+      async () => {
+        try { if (onProgress) onProgress(100, file.size, file.size) } catch (_) {}
+        resolve({ storagePath: path })
+      }
+    )
   })
-  try { console.log('[upload] /api/proxy/upload-url status', signedResp.status) } catch (_) {}
-  if (!signedResp.ok) {
-    const txt = await signedResp.text().catch(()=>'')
-    throw new Error(`Signed URL request failed: ${signedResp.status} ${txt}`)
-  }
-  const signedJson: any = await signedResp.json().catch(()=>({}))
-  const uploadUrl: string | undefined = signedJson?.uploadUrl || signedJson?.url
-  const storagePath: string | undefined = signedJson?.storagePath || signedJson?.path
-  const jobId: string | undefined = signedJson?.jobId || signedJson?.jobID || signedJson?.id
-  if (!uploadUrl || !storagePath || !jobId) {
-    throw new Error('Signed URL response missing uploadUrl, storagePath, or jobId')
-  }
-
-  // STEP 2: Upload file bytes directly to storage (no proxy)
-  const putResp = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
-  })
-  try { console.log('[upload] direct PUT status', putResp.status, { uploadUrl }) } catch (_) {}
-  if (!putResp.ok) {
-    const txt = await putResp.text().catch(()=>'')
-    throw new Error(`Direct upload failed: ${putResp.status} ${txt}`)
-  }
-
-  try { if (onProgress) onProgress(100) } catch (_) {}
-  return { storagePath, jobId }
 }

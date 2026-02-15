@@ -25,6 +25,7 @@ import { API_BASE as CENTRAL_API_BASE } from '@/lib/api';
 import { apiFetch } from '@/lib/client/apiClient'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { initFetchGuard } from '@/lib/client/fetch-guard';
+import { auth } from '@/lib/firebase.client';
 initFetchGuard();
 
 // Temporary type stubs for missing server types
@@ -112,24 +113,31 @@ export default function EditorClientPage() {
         // map upload progress into step or progress UI; simple update to progressStep
         setProgressStep(Math.round(pct))
       }
-      const { storagePath, jobId: jid } = await uploadVideoToStorage(file, onProgress)
-      console.log(`Upload complete: ${storagePath}`, { jobId: jid })
+      const { storagePath } = await uploadVideoToStorage(file, onProgress)
+      console.log(`Upload complete: ${storagePath}`)
 
-      if (!storagePath || !jid) {
-        throw new Error('Missing required upload metadata (storagePath or jobId)')
+      // Create job record on backend (small JSON only)
+      const uid = auth.currentUser?.uid || null
+      const body = {
+        storagePath,
+        originalFilename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        fileSize: file.size,
+        uid,
       }
 
-      // Tell backend to start processing the already-uploaded file
-      console.log('[startEditorPipeline] starting job on backend', jid)
-      const startResp = await apiFetch('/api/proxy/jobs/start', {
+      const startResp = await apiFetch('/api/proxy/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: jid }),
+        body: JSON.stringify(body),
       })
       if (!startResp.ok) {
         const txt = await startResp.text().catch(()=>'')
         throw new Error(`Job start failed: ${startResp.status} ${txt}`)
       }
+      const startJson: any = await startResp.json().catch(()=>({}))
+      const jid = startJson?.jobId
+      if (!jid) throw new Error('Backend did not return jobId')
       setJobId(jid)
       setJobStatus('QUEUED')
       startJobListening(jid)

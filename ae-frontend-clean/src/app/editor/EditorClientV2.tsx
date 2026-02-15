@@ -202,57 +202,39 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       // Log upload start and file metadata
       try { console.log('[upload] start', { apiProxy: PROXY_PREFIX, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
 
-      // STEP 1: Request signed upload URL from backend via proxy
-      try { console.log('[upload] requesting signed URL') } catch (_) {}
-      const signedResp = await apiFetch(`${PROXY_PREFIX}/upload-url`, {
+      // Use Firebase client resumable upload and then create job record on backend
+      try { console.log('[upload] starting resumable upload via Firebase client') } catch (_) {}
+      const onProgress = (pct: number, transferred?: number, total?: number) => {
+        try { setOverallProgress((pct || 0) / 100) } catch (_) {}
+      }
+      const { storagePath } = await uploadVideoToStorage(file, onProgress)
+      try { console.log('[upload] resumable upload complete', storagePath) } catch (_) {}
+
+      const uid = user?.id || auth.currentUser?.uid || null
+      const body = {
+        storagePath,
+        originalFilename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        fileSize: file.size,
+        uid,
+      }
+      const startResp = await apiFetch(`${PROXY_PREFIX}/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
+        body: JSON.stringify(body),
       })
-      try { console.log('[upload] signed URL request status', signedResp.status) } catch (_) {}
-      if (!signedResp.ok) {
-        const txt = await signedResp.text().catch(()=>'')
-        throw new Error(`Signed URL request failed: ${signedResp.status} ${txt}`)
-      }
-      const signedJson: any = await signedResp.json().catch(()=>({}))
-      const uploadUrl: string | undefined = signedJson?.uploadUrl || signedJson?.url
-      const storagePath: string | undefined = signedJson?.storagePath || signedJson?.path
-      const jidFromSigned: string | undefined = signedJson?.jobId || signedJson?.jobID || signedJson?.id
-      if (!uploadUrl || !storagePath || !jidFromSigned) {
-        throw new Error('Signed URL response missing uploadUrl, storagePath, or jobId')
-      }
-      try { console.log('[upload] signed URL received') } catch (_) {}
-
-      // STEP 2: Upload directly to storage using PUT (do NOT proxy the file body)
-      try { console.log('[upload] uploading directly to storage') } catch (_) {}
-      const putInit: any = {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file,
-      }
-      const putResp = await fetch(uploadUrl, putInit)
-      try { console.log('[upload] upload complete', putResp.status) } catch (_) {}
-      if (!putResp.ok) {
-        const txt = await putResp.text().catch(()=>'')
-        throw new Error(`Direct upload failed: ${putResp.status} ${txt}`)
-      }
-
-      // STEP 3: Tell backend to start processing using the returned jobId
-      try { console.log('[jobs] starting job on backend', jidFromSigned) } catch (_) {}
-      const startResp = await apiFetch(`${PROXY_PREFIX}/jobs/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: jidFromSigned }),
-      })
-      try { console.log('[jobs] /jobs/start status', startResp.status) } catch (_) {}
+      try { console.log('[jobs] /jobs create status', startResp.status) } catch (_) {}
       if (!startResp.ok) {
         const txt = await startResp.text().catch(()=>'')
-        throw new Error(`Job start failed: ${startResp.status} ${txt}`)
+        throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
-      setJobId(jidFromSigned)
+      const startJson: any = await startResp.json().catch(()=>({}))
+      const jidFromBackend: string | undefined = startJson?.jobId
+      if (!jidFromBackend) throw new Error('Backend did not return jobId')
+      setJobId(jidFromBackend)
       jobStartRef.current = Date.now()
       setStatus('analyzing')
-      startPollingJob(jidFromSigned)
+      startPollingJob(jidFromBackend)
     } catch (e: any) {
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')
