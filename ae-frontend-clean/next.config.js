@@ -9,6 +9,14 @@ const nextConfig = {
     // Skip ESLint during builds to avoid blocking compilation
     ignoreDuringBuilds: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://remarkable-comfort-production-4a9a.up.railway.app/api/:path*",
+      },
+    ]
+  },
 };
 
 module.exports = nextConfig;

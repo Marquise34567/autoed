@@ -23,12 +23,9 @@ export async function uploadVideoToStorage(
     )
   }
 
-  // Upload file to backend endpoint instead of direct cloud storage
-  const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
-  if (!backendBase) throw new Error('NEXT_PUBLIC_BACKEND_URL (or NEXT_PUBLIC_API_URL) is not configured')
-
+  // Upload file to backend endpoint via same-origin relative path
   const path = '/api/upload'
-  const url = `${backendBase.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+  const url = path
 
   return await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
