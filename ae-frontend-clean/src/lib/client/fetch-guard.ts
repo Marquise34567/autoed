@@ -14,8 +14,11 @@ export function initFetchGuard() {
   window.fetch = async (input: RequestInfo, init?: RequestInit) => {
     try {
       const url = typeof input === 'string' ? input : (input as Request).url || ''
-      if (url.includes('/api/upload-url') || url.includes('/api/upload')) {
-        const msg = `Blocked legacy upload URL call: ${url}`
+      // Block legacy endpoints that attempt to upload bytes via the proxy or backend.
+      // Allowed endpoints (signed-URL metadata) include `/api/upload-url` and `/api/proxy/upload-url`.
+      // Block: `/api/upload` and `/api/proxy/upload` (these would send file bytes through the app).
+      if (/\/api(\/proxy)?\/upload($|[?#\/])/.test(url)) {
+        const msg = `Blocked legacy proxied upload call: ${url}`
         // throw in dev to make the issue obvious; still log
         console.error(msg)
         throw new Error(msg)
