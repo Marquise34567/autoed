@@ -22,7 +22,15 @@ async function getAuthHeader(): Promise<Record<string,string>> {
 
 export async function apiFetch(pathOrUrl: string, opts: RequestInit = {}) {
   if (!ENV_BASE) throw missingBaseError()
-  const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${ENV_BASE.replace(/\/$/, '')}${pathOrUrl.startsWith('/') ? pathOrUrl : '/' + pathOrUrl}`
+  // If caller passed an absolute URL, use it. If caller passed a leading-slash
+  // path (e.g. `/api/jobs`) keep it as a same-origin relative URL so the
+  // browser will call the Next.js `/api/*` route and Vercel can proxy it.
+  // Otherwise, fall back to ENV_BASE when provided (useful for server-side callers).
+  const url = pathOrUrl.startsWith('http')
+    ? pathOrUrl
+    : (pathOrUrl.startsWith('/')
+        ? pathOrUrl
+        : (ENV_BASE ? `${ENV_BASE.replace(/\/$/, '')}/${pathOrUrl}` : `/${pathOrUrl}`))
 
   const headers: Record<string,string> = { ...(opts.headers as Record<string,string> || {}) }
   // attach auth header when available
