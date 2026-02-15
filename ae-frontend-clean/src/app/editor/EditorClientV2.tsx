@@ -123,7 +123,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const path = `${PROXY_PREFIX}/api/jobs/${encodeURIComponent(jobId)}`
+    const path = `${PROXY_PREFIX}/jobs/${encodeURIComponent(jobId)}`
     try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
     const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
@@ -207,7 +207,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const signedResp = await apiFetch(`${PROXY_PREFIX}/upload-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
       })
       try { console.log('[upload] signed URL request status', signedResp.status) } catch (_) {}
       if (!signedResp.ok) {
@@ -217,8 +217,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const signedJson: any = await signedResp.json().catch(()=>({}))
       const uploadUrl: string | undefined = signedJson?.uploadUrl || signedJson?.url
       const storagePath: string | undefined = signedJson?.storagePath || signedJson?.path
-      if (!uploadUrl || !storagePath) {
-        throw new Error('Signed URL response missing uploadUrl or storagePath')
+      const jidFromSigned: string | undefined = signedJson?.jobId || signedJson?.jobID || signedJson?.id
+      if (!uploadUrl || !storagePath || !jidFromSigned) {
+        throw new Error('Signed URL response missing uploadUrl, storagePath, or jobId')
       }
       try { console.log('[upload] signed URL received') } catch (_) {}
 
@@ -228,8 +229,6 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         method: 'PUT',
         headers: { 'Content-Type': file.type || 'application/octet-stream' },
         body: file,
-        // Required when running in Node 18+ (server/runtime) to forward a stream body
-        duplex: 'half',
       }
       const putResp = await fetch(uploadUrl, putInit)
       try { console.log('[upload] upload complete', putResp.status) } catch (_) {}
@@ -238,24 +237,22 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         throw new Error(`Direct upload failed: ${putResp.status} ${txt}`)
       }
 
-      // STEP 3: Create job pointing to storagePath
-      try { console.log('[jobs] creating job') } catch (_) {}
-      const jobsResp = await apiFetch(`${PROXY_PREFIX}/api/jobs`, {
+      // STEP 3: Tell backend to start processing using the returned jobId
+      try { console.log('[jobs] starting job on backend', jidFromSigned) } catch (_) {}
+      const startResp = await apiFetch(`${PROXY_PREFIX}/jobs/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storagePath, originalFileName: file.name, fileSize: file.size }),
+        body: JSON.stringify({ jobId: jidFromSigned }),
       })
-      try { console.log('[jobs] /api/jobs status', jobsResp.status) } catch (_) {}
-      const jobJson: any = await jobsResp.json().catch(()=>({}))
-      try { console.log('[jobs] /api/jobs json', jobJson) } catch (_) {}
-      if (!jobsResp.ok) {
-        throw new Error(jobJson?.error || `Job creation failed: ${jobsResp.status}`)
+      try { console.log('[jobs] /jobs/start status', startResp.status) } catch (_) {}
+      if (!startResp.ok) {
+        const txt = await startResp.text().catch(()=>'')
+        throw new Error(`Job start failed: ${startResp.status} ${txt}`)
       }
-      const jid = jobJson.jobId || jobJson.jobID || jobJson.id || jobJson?.id
-      setJobId(jid)
+      setJobId(jidFromSigned)
       jobStartRef.current = Date.now()
       setStatus('analyzing')
-      startPollingJob(jid)
+      startPollingJob(jidFromSigned)
     } catch (e: any) {
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')
@@ -284,7 +281,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `${PROXY_PREFIX}/api/jobs/${encodeURIComponent(jid)}`
+        const url = `${PROXY_PREFIX}/jobs/${encodeURIComponent(jid)}`
           const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
@@ -391,7 +388,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const fullUrl = `${PROXY_PREFIX}/api/jobs/${jid}`
+        const fullUrl = `${PROXY_PREFIX}/jobs/${jid}`
         try { console.log('[startPollingFallback] GET', fullUrl) } catch (_) {}
         const r = await apiFetch(fullUrl)
         if (!r.ok) {
@@ -537,7 +534,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       return
     }
     // Fallback: use backend download endpoint proxied via Next.js
-    const fullUrl = `${PROXY_PREFIX}/api/jobs/${jid}/download`
+    const fullUrl = `${PROXY_PREFIX}/jobs/${jid}/download`
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
     try { window.location.href = fullUrl } catch (e) { console.warn('Download redirect failed', e) }
   }

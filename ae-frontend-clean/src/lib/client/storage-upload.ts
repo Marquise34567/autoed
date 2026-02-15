@@ -10,8 +10,8 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 export async function uploadVideoToStorage(
   file: File,
   onProgress?: (percent: number) => void
-): Promise<{ storagePath: string; downloadURL: string }> {
-  if (!file.name && !file.type) throw new Error('Invalid file')
+): Promise<{ storagePath: string; jobId: string }> {
+  if (!file.name) throw new Error('Invalid file')
 
   if (!file.type.startsWith('video/') && !file.name.toLowerCase().endsWith('.mkv')) {
     throw new Error(`Invalid file type: ${file.type}. Must be a video file.`)
@@ -23,27 +23,39 @@ export async function uploadVideoToStorage(
     )
   }
 
-  const path = '/api/proxy/upload'
-
-  // Note: `fetch` doesn't provide upload progress natively. We call onProgress(0)
-  // before starting and onProgress(100) after completion so UI can update.
   try { if (onProgress) onProgress(0) } catch (_) {}
 
-  const form = new FormData()
-  form.append('file', file, file.name)
-
-  const resp = await apiFetch(path, { method: 'POST', body: form })
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '')
-    throw new Error(`Upload failed: ${resp.status} ${text}`)
+  // STEP 1: Request a signed upload URL (small JSON call via proxy)
+  const signedResp = await apiFetch('/api/proxy/upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
+  })
+  try { console.log('[upload] /api/proxy/upload-url status', signedResp.status) } catch (_) {}
+  if (!signedResp.ok) {
+    const txt = await signedResp.text().catch(()=>'')
+    throw new Error(`Signed URL request failed: ${signedResp.status} ${txt}`)
+  }
+  const signedJson: any = await signedResp.json().catch(()=>({}))
+  const uploadUrl: string | undefined = signedJson?.uploadUrl || signedJson?.url
+  const storagePath: string | undefined = signedJson?.storagePath || signedJson?.path
+  const jobId: string | undefined = signedJson?.jobId || signedJson?.jobID || signedJson?.id
+  if (!uploadUrl || !storagePath || !jobId) {
+    throw new Error('Signed URL response missing uploadUrl, storagePath, or jobId')
   }
 
-  const data = await resp.json().catch(() => ({}))
-  const storagePath = data.storagePath || data.path || data.storage_path
-  const downloadURL = data.downloadUrl || data.downloadURL || data.url || data.download_url
-  if (!storagePath || !downloadURL) throw new Error('Upload succeeded but backend did not return storagePath/downloadUrl')
+  // STEP 2: Upload file bytes directly to storage (no proxy)
+  const putResp = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+  try { console.log('[upload] direct PUT status', putResp.status, { uploadUrl }) } catch (_) {}
+  if (!putResp.ok) {
+    const txt = await putResp.text().catch(()=>'')
+    throw new Error(`Direct upload failed: ${putResp.status} ${txt}`)
+  }
 
   try { if (onProgress) onProgress(100) } catch (_) {}
-  return { storagePath, downloadURL }
+  return { storagePath, jobId }
 }

@@ -12,6 +12,7 @@ async function proxyHandler(
   req: Request,
   context: { params: { path?: string[] } }
 ) {
+  let targetUrl: string | null = null
   try {
     if (!BACKEND_ORIGIN) {
       return NextResponse.json(
@@ -26,7 +27,7 @@ async function proxyHandler(
     const { path = [] } = context.params;
     const url = new URL(req.url);
 
-    const targetUrl = buildTargetUrl(
+    targetUrl = buildTargetUrl(
       BACKEND_ORIGIN,
       path,
       url.search || ""
@@ -56,10 +57,13 @@ async function proxyHandler(
       headers: resHeaders,
     });
   } catch (err: any) {
+    const detail = err?.message || String(err)
+    const target = typeof targetUrl === 'string' ? targetUrl : null
     return NextResponse.json(
       {
         error: "Proxy fetch failed",
-        detail: err?.message || String(err),
+        detail,
+        target,
       },
       { status: 502 }
     );

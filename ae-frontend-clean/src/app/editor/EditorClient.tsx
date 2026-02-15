@@ -112,28 +112,26 @@ export default function EditorClientPage() {
         // map upload progress into step or progress UI; simple update to progressStep
         setProgressStep(Math.round(pct))
       }
-      const { storagePath, downloadURL } = await uploadVideoToStorage(file, onProgress)
-      console.log(`Firebase upload complete: ${storagePath}`)
+      const { storagePath, jobId: jid } = await uploadVideoToStorage(file, onProgress)
+      console.log(`Upload complete: ${storagePath}`, { jobId: jid })
 
-      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream", smartZoom: settings?.smartZoom !== false }
-      // Validate required fields before calling API
-      if (!payload.storagePath || !payload.downloadURL) {
-        throw new Error('Missing required upload metadata (storagePath or downloadURL)')
+      if (!storagePath || !jid) {
+        throw new Error('Missing required upload metadata (storagePath or jobId)')
       }
-      console.log('[startEditorPipeline] Creating job with', payload)
-      console.log('[startEditorPipeline] POST payload:', JSON.stringify(payload))
-      const createResp = await apiFetch('/api/proxy/jobs', {
+
+      // Tell backend to start processing the already-uploaded file
+      console.log('[startEditorPipeline] starting job on backend', jid)
+      const startResp = await apiFetch('/api/proxy/jobs/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ jobId: jid }),
       })
-      type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
-      const createJson = (await safeJson(createResp)) as CreateJobResponse
-      if (!createResp.ok) throw new Error(createJson?.error || 'Failed to create job')
-      const jid = createJson.jobId || createJson.jobID || createJson.id
+      if (!startResp.ok) {
+        const txt = await startResp.text().catch(()=>'')
+        throw new Error(`Job start failed: ${startResp.status} ${txt}`)
+      }
       setJobId(jid)
       setJobStatus('QUEUED')
-      // start polling job status every 2s using resolved job id
       startJobListening(jid)
     } catch (e: any) {
       console.error(e)
