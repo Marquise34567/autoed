@@ -1,55 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://remarkable-comfort-production-4a9a.up.railway.app'
+// Run this route in Node runtime so we can forward binary bodies and use
+// `duplex: "half"` when necessary (required by node-fetch when passing a stream).
+export const runtime = 'nodejs'
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://remarkable-comfort-production-4a9a.up.railway.app'
 
 async function handle(req: NextRequest) {
   try {
     const { params } = req as any
     const pathSegments: string[] = params?.path || []
     const targetPath = pathSegments.join('/')
-    const targetUrl = `${BACKEND_URL.replace(/\/$/, '')}/${targetPath}`
-    console.log('[proxy] forwarding to:', targetUrl)
+    const search = req.nextUrl?.search || ''
+    const targetUrl = `${BACKEND_URL.replace(/\/$/, '')}/${targetPath}${search}`
 
-    // Build headers, excluding host
+    // Log incoming request (avoid logging headers or any secrets)
+    console.log('[proxy] incoming ->', req.method, req.nextUrl?.pathname + (search || ''), '->', targetUrl)
+
+    // Build headers, excluding host and content-length
     const headers: Record<string, string> = {}
-    req.headers.forEach((value, key) => {
-      if (key.toLowerCase() === 'host') return
+    for (const [key, value] of req.headers.entries()) {
+      const k = key.toLowerCase()
+      if (k === 'host' || k === 'content-length') continue
       headers[key] = value
-    })
+    }
 
-    // Forward the request body transparently (works for JSON and multipart)
-    const fetchInit: RequestInit = {
+    const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
+
+    // Prepare fetch init; include duplex when forwarding a body stream
+    const fetchInit: any = {
       method: req.method,
       headers,
-      // body can be a ReadableStream from the Request
-      body: req.body
+    }
+
+    if (hasBody) {
+      // `duplex: "half"` is required by Node when passing a stream body
+      fetchInit.duplex = 'half'
+      fetchInit.body = req.body
     }
 
     const upstream = await fetch(targetUrl, fetchInit)
 
-    const contentType = upstream.headers.get('content-type') || ''
+    // Log upstream response status
+    console.log('[proxy] upstream response', req.method, targetUrl, '->', upstream.status)
+
+    // Copy response headers, excluding hop-by-hop headers
     const responseHeaders = new Headers()
-    // copy selective headers back
     upstream.headers.forEach((v, k) => {
-      // exclude hop-by-hop headers
-      if (['transfer-encoding', 'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'upgrade'].includes(k.toLowerCase())) return
+      const kl = k.toLowerCase()
+      if (['transfer-encoding', 'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'upgrade'].includes(kl)) return
+      // Do not log header values (they may contain tokens)
       responseHeaders.set(k, v)
     })
 
+    // Stream the response back to the client
     const body = await upstream.arrayBuffer()
-
-    // Return JSON if JSON
-    if (contentType.includes('application/json')) {
-      return new NextResponse(body, { status: upstream.status, headers: responseHeaders })
-    }
-
-    // Otherwise return as blob/binary
     return new NextResponse(body, { status: upstream.status, headers: responseHeaders })
   } catch (err: any) {
-    console.error('[proxy] error', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    // Server-side error logging (stack) but never print secrets
+    console.error('[proxy] error', err && err.stack ? err.stack : err)
+    return NextResponse.json({ error: 'proxy error' }, { status: 500 })
   }
 }
 

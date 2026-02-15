@@ -19,7 +19,7 @@ export async function getOrCreateUserDoc(_uid: string) {
     const headers: Record<string,string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const res = await apiFetch('/api/proxy/api/userdoc', { headers, cache: 'no-store' })
+    const res = await apiFetch('/api/proxy/userdoc', { headers, cache: 'no-store' })
     if (!res.ok) {
       console.warn('[userdoc] server responded non-OK', res.status)
       return { plan: 'starter', status: 'unknown', source: 'fallback' }

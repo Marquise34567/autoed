@@ -14,7 +14,7 @@ export async function startDownload(jobId: string) {
   if (!user) throw new Error('Not authenticated')
   const idToken = await user.getIdToken(true)
 
-    const resp = await apiFetch('/api/proxy/api/video/download', {
+    const resp = await apiFetch('/api/proxy/video/download', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

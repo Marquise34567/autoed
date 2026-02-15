@@ -154,10 +154,10 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       createJobWithFile(selectedFile)
       return
     }
-    // No file yet — open file picker
+    // No file yet — set UI message and open file picker
     try { setErrorMessage('Please select a file to upload') } catch (_) {}
-    try { console.error('[upload] no file selected') } catch (_) {}
     openFilePicker()
+    return
   }
 
   async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
@@ -204,7 +204,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       // STEP 1: Request signed upload URL from backend via proxy
       try { console.log('[upload] requesting signed URL') } catch (_) {}
-      const signedResp = await apiFetch(`${PROXY_PREFIX}/api/upload-url`, {
+      const signedResp = await apiFetch(`${PROXY_PREFIX}/upload-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, contentType: file.type }),
@@ -224,11 +224,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       // STEP 2: Upload directly to storage using PUT (do NOT proxy the file body)
       try { console.log('[upload] uploading directly to storage') } catch (_) {}
-      const putResp = await fetch(uploadUrl, {
+      const putInit: any = {
         method: 'PUT',
         headers: { 'Content-Type': file.type || 'application/octet-stream' },
         body: file,
-      })
+        // Required when running in Node 18+ (server/runtime) to forward a stream body
+        duplex: 'half',
+      }
+      const putResp = await fetch(uploadUrl, putInit)
       try { console.log('[upload] upload complete', putResp.status) } catch (_) {}
       if (!putResp.ok) {
         const txt = await putResp.text().catch(()=>'')

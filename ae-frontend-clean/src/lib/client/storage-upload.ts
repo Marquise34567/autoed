@@ -23,7 +23,7 @@ export async function uploadVideoToStorage(
     )
   }
 
-  const path = '/api/proxy/api/upload'
+  const path = '/api/proxy/upload'
 
   // Note: `fetch` doesn't provide upload progress natively. We call onProgress(0)
   // before starting and onProgress(100) after completion so UI can update.
