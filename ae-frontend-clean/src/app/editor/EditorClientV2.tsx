@@ -122,7 +122,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const path = `/api/jobs/${encodeURIComponent(jobId)}`
+    const path = `${API_BASE.replace(/\/$/, '')}/api/jobs/${encodeURIComponent(jobId)}`
     try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
     const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
@@ -189,9 +189,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       let downloadURL: string | undefined = undefined
 
       try {
+        // Use explicit API base for upload
+        const uploadUrl = `${API_BASE.replace(/\/$/, '')}/api/upload`
+        try { console.log('[upload] using uploadUrl ->', uploadUrl) } catch (_) {}
         const fd = new FormData()
         fd.append('file', file)
-        const upResp = await apiFetch('/api/upload', { method: 'POST', body: fd })
+        const upResp = await apiFetch(uploadUrl, { method: 'POST', body: fd })
         if (!upResp.ok) throw new Error('Upload endpoint failed')
         const ju = await upResp.json()
         storagePath = ju.storagePath || ju.path || ju.key
@@ -220,10 +223,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       console.log('[createJobWithFile] Creating job with', payload)
       console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
-      const path = '/api/jobs'
-      const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
-      try { console.log('[createJobWithFile] POST', fullUrl) } catch (_) {}
-      const resp = await apiFetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const jobsUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs`
+      try { console.log('[createJobWithFile] POST', jobsUrl) } catch (_) {}
+      const resp = await apiFetch(jobsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       type CreateJobResponse = { jobId?: string; jobID?: string; id?: string; error?: string }
       const j = (await safeJson(resp)) as CreateJobResponse
       if (!resp.ok) throw new Error(j?.error || 'Failed to create job')
@@ -261,7 +263,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `/api/jobs/${encodeURIComponent(jid)}`
+        const url = `${API_BASE.replace(/\/$/, '')}/api/jobs/${encodeURIComponent(jid)}`
         const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
@@ -368,10 +370,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const path = `/api/jobs/${jid}`
-        const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+        const fullUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}`
         try { console.log('[startPollingFallback] GET', fullUrl) } catch (_) {}
-        const r = await apiFetch(path)
+        const r = await apiFetch(fullUrl)
         if (!r.ok) {
           if (r.status >= 400 && r.status < 500 && r.status !== 404) {
             if (process.env.NODE_ENV === 'development') console.warn(`[poll:${jid}] received ${r.status}`)
@@ -515,8 +516,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       return
     }
     // Fallback: use backend download endpoint proxied via Next.js
-    const path = `/api/jobs/${jid}/download`
-    const fullUrl = `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`
+    const fullUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}/download`
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
     try { window.location.href = fullUrl } catch (e) { console.warn('Download redirect failed', e) }
   }
