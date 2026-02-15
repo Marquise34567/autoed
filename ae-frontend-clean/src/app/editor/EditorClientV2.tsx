@@ -199,70 +199,57 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobResp(null)
     setJobId(undefined)
     try {
-      // Log upload start with API URL and file metadata
-      try { console.log('[upload] start', { apiUrl: PROXY_PREFIX, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
+      // Log upload start and file metadata
+      try { console.log('[upload] start', { apiProxy: PROXY_PREFIX, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
 
-      // Try server-side upload first (/api/upload). If it fails, fallback to client upload helper.
-      let storagePath: string | undefined = undefined
-      let downloadURL: string | undefined = undefined
+      // STEP 1: Request signed upload URL from backend via proxy
+      try { console.log('[upload] requesting signed URL') } catch (_) {}
+      const signedResp = await apiFetch(`${PROXY_PREFIX}/api/upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+      })
+      try { console.log('[upload] signed URL request status', signedResp.status) } catch (_) {}
+      if (!signedResp.ok) {
+        const txt = await signedResp.text().catch(()=>'')
+        throw new Error(`Signed URL request failed: ${signedResp.status} ${txt}`)
+      }
+      const signedJson: any = await signedResp.json().catch(()=>({}))
+      const uploadUrl: string | undefined = signedJson?.uploadUrl || signedJson?.url
+      const storagePath: string | undefined = signedJson?.storagePath || signedJson?.path
+      if (!uploadUrl || !storagePath) {
+        throw new Error('Signed URL response missing uploadUrl or storagePath')
+      }
+      try { console.log('[upload] signed URL received') } catch (_) {}
 
-      try {
-        // Perform direct fetch to API_URL /api/upload
-        const uploadUrl = `${PROXY_PREFIX}/api/upload`
-        try { console.log('[upload] using uploadUrl ->', uploadUrl) } catch (_) {}
-        const fd = new FormData()
-        fd.append('file', file)
-        const upResp = await fetch(uploadUrl, { method: 'POST', body: fd })
-        try { console.log('[upload] /api/upload status', upResp.status) } catch (_) {}
-        let ju: any = {}
-        try { ju = await upResp.json().catch(()=>({})) } catch(_) {}
-        try { console.log('[upload] /api/upload status', upResp.status) } catch (_) {}
-        try { console.log('[upload] /api/upload json', ju) } catch (_) {}
-        if (!upResp.ok) throw new Error(`Upload endpoint failed: ${upResp.status}`)
-        storagePath = ju.storagePath || ju.path || ju.key
-        downloadURL = ju.originalUrl || ju.downloadURL || ju.url || ju.downloadUrl
-      } catch (e) {
-        console.warn('[upload] server upload failed, falling back to client upload', e)
-        const onProgress = (pct: number) => {
-          try { setOverallProgress(Math.round(pct)) } catch (_) {}
-        }
-        const up = await uploadVideoToStorage(file, onProgress)
-        storagePath = up.storagePath
-        downloadURL = up.downloadURL
-        console.log(`Firebase upload complete: ${storagePath}`)
+      // STEP 2: Upload directly to storage using PUT (do NOT proxy the file body)
+      try { console.log('[upload] uploading directly to storage') } catch (_) {}
+      const putResp = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      })
+      try { console.log('[upload] upload complete', putResp.status) } catch (_) {}
+      if (!putResp.ok) {
+        const txt = await putResp.text().catch(()=>'')
+        throw new Error(`Direct upload failed: ${putResp.status} ${txt}`)
       }
 
-      const payload = { storagePath, downloadURL, filename: file.name, contentType: file.type || "application/octet-stream", smartZoom: smartZoom }
-
-      // Validate before sending
-      if (!payload.storagePath || !payload.downloadURL) {
-        setErrorMessage('Missing required upload metadata (storagePath or downloadURL)')
-        setStatus('error')
-        setIsUploading(false)
-        return
+      // STEP 3: Create job pointing to storagePath
+      try { console.log('[jobs] creating job') } catch (_) {}
+      const jobsResp = await apiFetch(`${PROXY_PREFIX}/api/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath, originalFileName: file.name, fileSize: file.size }),
+      })
+      try { console.log('[jobs] /api/jobs status', jobsResp.status) } catch (_) {}
+      const jobJson: any = await jobsResp.json().catch(()=>({}))
+      try { console.log('[jobs] /api/jobs json', jobJson) } catch (_) {}
+      if (!jobsResp.ok) {
+        throw new Error(jobJson?.error || `Job creation failed: ${jobsResp.status}`)
       }
-
-      console.log('[createJobWithFile] Creating job with', payload)
-      console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
-      const jobsUrl = `${PROXY_PREFIX}/api/jobs`
-      try { console.log('[jobs] POST', jobsUrl) } catch (_) {}
-      // Send the upload response (minimal) as `upload` field to the job create endpoint
-      const jobBody = { upload: { storagePath, downloadURL, filename: file.name }, status: 'queued' }
-      let resp: Response
-      try {
-        resp = await fetch(jobsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(jobBody) })
-      } catch (err) {
-        throw err
-      }
-      // log job creation status
-      try { console.log('[jobs] /api/jobs status', resp.status) } catch (_) {}
-      const job = await resp.json().catch(()=>({}))
-      try { console.log('[jobs] /api/jobs json', job) } catch (_) {}
-      if (!resp.ok) throw new Error(job?.error || `Job create failed: ${resp.status}`)
-      const jid = job.jobId || job.jobID || job.id || job?.id
-      // job id recorded below
+      const jid = jobJson.jobId || jobJson.jobID || jobJson.id || jobJson?.id
       setJobId(jid)
-      // record approximate job start time for ETA estimates
       jobStartRef.current = Date.now()
       setStatus('analyzing')
       startPollingJob(jid)
