@@ -1,128 +1,74 @@
-export const runtime = 'edge';
+import { NextResponse } from "next/server";
 
-const HOP_BY_HOP = new Set([
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailers',
-  'transfer-encoding',
-  'upgrade',
-  'host',
-]);
+const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN;
 
-function stripHopByHop(incoming: Headers): Headers {
-  const out = new Headers();
-  for (const [k, v] of incoming) {
-    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
-    out.set(k, v);
-  }
-  return out;
+function buildTargetUrl(origin: string, pathParts: string[], search: string) {
+  const cleanOrigin = origin.replace(/\/+$/, "");
+  const cleanPath = pathParts.join("/").replace(/^\/+/, "");
+  return `${cleanOrigin}/api/${cleanPath}${search}`;
 }
 
-function buildBackendUrl(request: Request, params: { path?: string[] }) {
-  const backendOrigin = process.env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return { ok: false, response: new Response(JSON.stringify({ error: 'Missing BACKEND_ORIGIN' }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    })) };
-
-  }
-
-  const url = new URL(request.url);
-  const qs = url.search || '';
-
-  const segments = Array.isArray(params?.path) ? [...params.path] : [];
-  if (segments.length > 0 && segments[0].toLowerCase() === 'api') segments.shift();
-
-  const pathSuffix = segments.length ? `/${segments.map(encodeURIComponent).join('/')}` : '';
-  const proxiedPath = `/api${pathSuffix}`;
-
-  let backendUrl: string;
+async function proxyHandler(
+  req: Request,
+  context: { params: { path?: string[] } }
+) {
   try {
-    backendUrl = new URL(proxiedPath + qs, backendOrigin).toString();
-  } catch (err) {
-    return { ok: false, response: new Response(JSON.stringify({ error: 'Invalid BACKEND_ORIGIN' }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    })) };
-  }
+    if (!BACKEND_ORIGIN) {
+      return NextResponse.json(
+        {
+          error: "Missing BACKEND_ORIGIN",
+          hint: "Set BACKEND_ORIGIN in Vercel Production env vars",
+        },
+        { status: 500 }
+      );
+    }
 
-  return { ok: true, backendUrl };
-}
+    const { path = [] } = context.params;
+    const url = new URL(req.url);
 
-function forwardHeaders(request: Request): Headers {
-  const incoming = request.headers;
-  const headers = stripHopByHop(incoming);
+    const targetUrl = buildTargetUrl(
+      BACKEND_ORIGIN,
+      path,
+      url.search || ""
+    );
 
-  // Ensure forwarded metadata is present
-  const host = incoming.get('host');
-  const proto = request.url.startsWith('https') ? 'https' : 'http';
-  if (host && !headers.has('x-forwarded-host')) headers.set('x-forwarded-host', host);
-  if (!headers.has('x-forwarded-proto')) headers.set('x-forwarded-proto', proto);
-  if (!headers.has('x-forwarded-for')) {
-    const existing = incoming.get('x-forwarded-for');
-    if (existing) headers.set('x-forwarded-for', existing);
-  }
+    const headers = new Headers(req.headers);
+    headers.delete("host");
+    headers.delete("content-length");
 
-  headers.delete('content-length');
-  return headers;
-}
+    const method = req.method.toUpperCase();
+    const hasBody = !["GET", "HEAD"].includes(method);
 
-function filterResponseHeaders(h: Headers): Headers {
-  const out = new Headers();
-  for (const [k, v] of h) {
-    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
-    out.set(k, v);
-  }
-  return out;
-}
-
-async function handleProxy(request: Request, ctx: { params: { path?: string[] } }): Promise<Response> {
-  const built = buildBackendUrl(request, ctx.params);
-  if (!built.ok) return built.response;
-
-  const backendUrl = built.backendUrl as string;
-
-  const headers = forwardHeaders(request);
-
-  const init: RequestInit & { duplex?: 'half' } = {
-    method: request.method,
-    headers,
-    redirect: 'manual',
-  };
-
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    // @ts-expect-error duplex is supported in the runtime for streaming
-    init.body = request.body ?? undefined;
-    init.duplex = 'half';
-  }
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(backendUrl, init as RequestInit);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(JSON.stringify({ error: 'Proxy crashed', detail: message }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
+    const upstream = await fetch(targetUrl, {
+      method,
+      headers,
+      body: hasBody ? req.body : undefined,
+      // @ts-ignore
+      duplex: "half",
+      cache: "no-store",
     });
+
+    const resHeaders = new Headers(upstream.headers);
+    resHeaders.set("x-proxy-target", targetUrl);
+
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: resHeaders,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        error: "Proxy fetch failed",
+        detail: err?.message || String(err),
+      },
+      { status: 502 }
+    );
   }
-
-  const respHeaders = filterResponseHeaders(upstream.headers);
-
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: respHeaders,
-  });
 }
 
-export async function GET(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function POST(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function PUT(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function PATCH(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function DELETE(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function OPTIONS(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
-export async function HEAD(request: Request, ctx: { params: { path?: string[] } }) { return handleProxy(request, ctx); }
+export const GET = proxyHandler;
+export const POST = proxyHandler;
+export const PUT = proxyHandler;
+export const PATCH = proxyHandler;
+export const DELETE = proxyHandler;
+export const OPTIONS = proxyHandler;
