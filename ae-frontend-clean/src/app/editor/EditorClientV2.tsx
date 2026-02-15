@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import PipelineStepper from '@/components/editor-v2/PipelineStepper'
+// PipelineStepper removed
 import ProgressBar from '@/components/ProgressBar'
 import JobDetails from '@/components/editor/JobDetails'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
@@ -21,8 +21,8 @@ import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
 import { initFetchGuard } from '@/lib/client/fetch-guard'
 initFetchGuard()
 import { apiFetch } from '@/lib/client/apiClient'
-// Use proxy path for backend requests to avoid CORS; browser should call Next.js proxy
-const PROXY_PREFIX = '/api/proxy'
+import { apiUrl } from '@/lib/apiBase'
+// Use direct backend API paths; `apiFetch` resolves `/api/*` to the configured backend
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
@@ -123,7 +123,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const path = `${PROXY_PREFIX}/jobs/${encodeURIComponent(jobId)}`
+    const path = `/api/jobs/${encodeURIComponent(jobId)}`
     try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
     const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
@@ -150,7 +150,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   function handleUploadButtonClick() {
     try { console.log('[upload] button clicked (handler)') } catch (_) {}
     if (selectedFile) {
-      try { console.log('[upload] start', { apiUrl: PROXY_PREFIX, fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
+      try { console.log('[upload] start', { apiUrl: '/api', fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
       createJobWithFile(selectedFile)
       return
     }
@@ -193,6 +193,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       setErrorMessage('Waiting for auth')
       return
     }
+    // Ensure user is signed in before starting upload
+    const uid = user?.id || auth.currentUser?.uid || null
+    if (!uid) {
+      setErrorMessage('Please sign in')
+      setIsUploading(false)
+      setStatus('idle')
+      return
+    }
     setIsUploading(true)
     setStatus('uploading')
     setOverallProgress(0)
@@ -200,7 +208,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobId(undefined)
     try {
       // Log upload start and file metadata
-      try { console.log('[upload] start', { apiProxy: PROXY_PREFIX, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
+      try { console.log('[upload] start', { apiProxy: '/api', fileName: file?.name, fileSize: file?.size }) } catch (_) {}
 
       // Use Firebase client resumable upload and then create job record on backend
       try { console.log('[upload] starting resumable upload via Firebase client') } catch (_) {}
@@ -209,16 +217,16 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       }
       const { storagePath } = await uploadVideoToStorage(file, onProgress)
       try { console.log('[upload] resumable upload complete', storagePath) } catch (_) {}
-
-      const uid = user?.id || auth.currentUser?.uid || null
+      const gsUri = `gs://autoeditor-d4940.firebasestorage.app/${storagePath}`
       const body = {
-        storagePath,
-        originalFilename: file.name,
-        contentType: file.type || 'application/octet-stream',
-        fileSize: file.size,
         uid,
+        storagePath,
+        gsUri,
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        size: file.size,
       }
-      const startResp = await apiFetch(`${PROXY_PREFIX}/jobs`, {
+      const startResp = await apiFetch(`/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -263,7 +271,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `${PROXY_PREFIX}/jobs/${encodeURIComponent(jid)}`
+          const url = `/api/jobs/${encodeURIComponent(jid)}`
           const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
@@ -370,7 +378,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const fullUrl = `${PROXY_PREFIX}/jobs/${jid}`
+        const fullUrl = `/api/jobs/${jid}`
         try { console.log('[startPollingFallback] GET', fullUrl) } catch (_) {}
         const r = await apiFetch(fullUrl)
         if (!r.ok) {
@@ -493,13 +501,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   }, [status, jobId])
 
   // open completion modal once per job when a final result URL exists
+  // NOTE: do not automatically open the modal here — the modal should only
+  // appear after the user initiates a successful download. We still record
+  // the last celebrated job id to avoid repeating celebrations.
   useEffect(() => {
     try {
       const url = jobResp?.result?.videoUrl || previewUrl
       if (!url || !jobId) return
       if (lastCelebratedJobId === jobId) return
-      // open modal and persist celebrated job id
-      setCompletionOpen(true)
       setLastCelebratedJobId(jobId)
       try { localStorage.setItem('ae:lastCelebratedJobId', jobId) } catch (e) {}
     } catch (e) {}
@@ -516,9 +525,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       return
     }
     // Fallback: use backend download endpoint proxied via Next.js
-    const fullUrl = `${PROXY_PREFIX}/jobs/${jid}/download`
+    const fullUrl = `/api/jobs/${jid}/download`
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
-    try { window.location.href = fullUrl } catch (e) { console.warn('Download redirect failed', e) }
+    try { setCompletionOpen(true); window.location.href = apiUrl(fullUrl) } catch (e) { console.warn('Download redirect failed', e) }
   }
 
   // notify when user's plan upgrades/changes
@@ -544,19 +553,17 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       <div className={`rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.65),rgba(7,9,15,0.5))] p-6 backdrop-blur-xl shadow-[0_24px_60px_rgba(2,6,23,0.6)]`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Editor Pipeline</h2>
-            <div className="text-xs text-white/60 mt-1">Retention-first AI editing</div>
+            <h2 className="text-2xl font-bold">Editor</h2>
+            <div className="text-xs text-white/60 mt-1">AI-assisted editing</div>
           </div>
         </div>
 
-        <div className="mb-4">
-          <PipelineStepper current={status} />
-        </div>
+        {/* pipeline UI removed */}
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-8">
           {/* Left: upload + original preview */}
-          <div className="col-span-7 space-y-4">
-            <div className="p-6 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6 hover:shadow-[0_12px_40px_rgba(124,58,237,0.06)] transition">
+          <div className="col-span-7 space-y-5">
+            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6 hover:shadow-lg transform-gpu transition-transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-white/70">Upload</div>
@@ -596,7 +603,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
               </div>
             </div>
 
-            <div className="p-4 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6">
+            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-white/70">Original</div>
                 <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Original</div>
@@ -612,7 +619,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           </div>
 
           {/* Right: progress, result preview, details */}
-          <div className="col-span-5 space-y-4">
+          <div className="col-span-5 space-y-5">
               <ProcessingCard
                 status={status}
                 overallProgress={(jobResp?.progress ?? overallProgress) as any}
@@ -624,7 +631,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 smartZoom={smartZoom}
                 errorMessage={errorMessage}
               />
-            <div className="p-4 rounded-[20px] bg-[rgba(255,255,255,0.02)] border border-white/6">
+            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-white/70">Result</div>
                 <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Rendered</div>

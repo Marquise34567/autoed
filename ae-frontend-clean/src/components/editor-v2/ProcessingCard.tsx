@@ -98,10 +98,10 @@ export default function ProcessingCard({
   }
 
   return (
-    <div className="p-4 sm:p-6 rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] border border-white/6 backdrop-blur-xl shadow-lg">
+    <div className="p-6 sm:p-8 rounded-3xl bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] border border-white/8 backdrop-blur-xl shadow-[0_20px_60px_rgba(2,6,23,0.45)] transform-gpu transition-transform hover:-translate-y-1">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-sm text-white/70">AI Editor Pipeline</div>
+          <div className="text-sm text-white/70">AI Editor</div>
           <div className="flex items-center gap-3 mt-1">
             <div className="inline-flex items-center gap-2 bg-white/6 px-3 py-1 rounded-full">
               <span className="h-2 w-2 rounded-full bg-emerald-400 relative">
@@ -120,12 +120,12 @@ export default function ProcessingCard({
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="mt-5">
+        <div className="flex items-center gap-3 flex-wrap">
           {stages.map((st) => {
             const active = st.key === activeStageKey
             return (
-              <div key={st.key} className={`px-3 py-1 rounded-full text-xs font-semibold ${active ? 'bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white shadow' : 'bg-white/5 text-white/60 border border-white/6'}`} title={st.label}>
+              <div key={st.key} className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${active ? 'bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white shadow-md scale-105' : 'bg-white/5 text-white/60 border border-white/6 hover:scale-105'}`} title={st.label}>
                 <span className="block max-w-40 truncate">{st.label}</span>
               </div>
             )
@@ -133,8 +133,8 @@ export default function ProcessingCard({
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="flex items-center gap-3">
+      <div className="mt-5">
+        <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="w-full bg-white/6 rounded-full h-3 overflow-hidden relative">
               <div style={{ width: `${pct}%` }} className="h-full bg-linear-to-r from-blue-400 to-purple-500 transition-all" />
@@ -148,10 +148,10 @@ export default function ProcessingCard({
           </div>
         </div>
 
-          <div className="mt-2 text-xs text-white/60 truncate max-w-full">{ACTIVITY_LINES[activityIdx]}</div>
+          <div className="mt-3 text-sm text-white/60 truncate max-w-full">{ACTIVITY_LINES[activityIdx]}</div>
       </div>
 
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-5 flex items-center gap-6">
         <div className="flex-1">
           <div className="text-sm text-white/70">Detected length</div>
           <div className="text-white font-semibold">{detectedDurationSec ? fmtDuration(detectedDurationSec) : '—'}</div>

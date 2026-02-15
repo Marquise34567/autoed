@@ -11,6 +11,7 @@ import { safeJson } from '@/lib/client/safeJson';
 import { PLANS, type PlanId } from '@/config/plans';
 import { validateReturnTo } from '@/lib/client/returnTo';
 import { API_BASE } from '@/lib/api'
+import { apiUrl } from '@/lib/apiBase'
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -44,7 +45,7 @@ function CheckoutContent() {
         // ignore token retrieval errors; server will enforce auth if required
       }
 
-          const response = await apiFetch('/api/proxy/stripe/checkout', {
+          const response = await apiFetch(apiUrl('/api/proxy/stripe/checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

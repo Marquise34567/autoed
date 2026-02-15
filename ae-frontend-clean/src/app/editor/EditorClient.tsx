@@ -23,6 +23,7 @@ import { uploadVideoToStorage } from "@/lib/client/storage-upload";
 import { safeJson } from '@/lib/client/safeJson';
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api';
 import { apiFetch } from '@/lib/client/apiClient'
+import { apiUrl } from '@/lib/apiBase'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
 import { initFetchGuard } from '@/lib/client/fetch-guard';
 import { auth } from '@/lib/firebase.client';
@@ -104,56 +105,14 @@ export default function EditorClientPage() {
     smartZoom: true,
   });
 
-  async function startEditorPipeline(file: File) {
-    console.log('[editor] startEditorPipeline:', file.name, file.type)
-    setError(null)
-    setAnalyzing(true)
-    try {
-      const onProgress = (pct: number) => {
-        // map upload progress into step or progress UI; simple update to progressStep
-        setProgressStep(Math.round(pct))
-      }
-      const { storagePath } = await uploadVideoToStorage(file, onProgress)
-      console.log(`Upload complete: ${storagePath}`)
-
-      // Create job record on backend (small JSON only)
-      const uid = auth.currentUser?.uid || null
-      const body = {
-        storagePath,
-        originalFilename: file.name,
-        contentType: file.type || 'application/octet-stream',
-        fileSize: file.size,
-        uid,
-      }
-
-      const startResp = await apiFetch('/api/proxy/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!startResp.ok) {
-        const txt = await startResp.text().catch(()=>'')
-        throw new Error(`Job start failed: ${startResp.status} ${txt}`)
-      }
-      const startJson: any = await startResp.json().catch(()=>({}))
-      const jid = startJson?.jobId
-      if (!jid) throw new Error('Backend did not return jobId')
-      setJobId(jid)
-      setJobStatus('QUEUED')
-      startJobListening(jid)
-    } catch (e: any) {
-      console.error(e)
-      setError(e?.message || 'Upload failed')
-      setAnalyzing(false)
-    }
-  }
+  // editor pipeline removed
 
   const startJobListening = (jid: string) => {
     if (!jid) return
     try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
     const tick = async () => {
       try {
-        const r = await apiFetch(`/api/proxy/jobs/${jid}`)
+        const r = await apiFetch(`/api/jobs/${jid}`)
         if (!r.ok) {
           if (r.status === 404) return
           console.warn('[poll] received', r.status)
@@ -179,8 +138,6 @@ export default function EditorClientPage() {
             const jobIsComplete = lower === 'done' || lower === 'complete' || lower === 'ready_to_download' || lower === 'ready'
             if (jobIsComplete && jid && lastShownJobIdRef.current !== jid) {
               lastShownJobIdRef.current = jid
-              setShowCompleteModal(true)
-              setDownloadStarted(false)
             }
           } catch (e) {
             // ignore
@@ -218,13 +175,13 @@ export default function EditorClientPage() {
     const input = event.currentTarget
     // clear the input before awaiting pipeline to avoid null/ref issues if the input unmounts
     try { input.value = '' } catch (_) {}
-    await startEditorPipeline(selectedFile)
+    // pipeline disabled: file selected but processing not started automatically
   }
 
   // Handle download initiated from completion modal
   const handleModalDownload = async (jid?: string | null) => {
     if (!jid) return
-    const endpoint = `/api/proxy/jobs/${jid}/download`
+    const endpoint = `/api/jobs/${jid}/download`
     try {
       // Use apiFetch so auth header is attached when available and the
       // browser calls the same-origin `/api/...` route which Vercel will proxy.
@@ -235,6 +192,7 @@ export default function EditorClientPage() {
         const url = data?.downloadUrl || data?.url || data?.download || null
         if (url) {
           setDownloadStarted(true)
+          setShowCompleteModal(true)
           window.location.href = url
           return
         }
@@ -244,8 +202,9 @@ export default function EditorClientPage() {
     }
     try {
       setDownloadStarted(true)
-      // Redirect to same-origin endpoint so Next.js/Vercel will proxy to the backend
-      window.location.href = endpoint
+      setShowCompleteModal(true)
+      // Redirect to backend download endpoint via configured base
+      window.location.href = apiUrl(endpoint)
     } catch (e) {
       console.warn('Download redirect failed', e)
     }

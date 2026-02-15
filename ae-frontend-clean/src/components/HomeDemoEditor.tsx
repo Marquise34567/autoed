@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import PipelineStepper from '@/components/editor-v2/PipelineStepper'
+// PipelineStepper removed
 import PremiumLoader from '@/components/PremiumLoader'
 
 export default function HomeDemoEditor() {
@@ -32,9 +32,7 @@ export default function HomeDemoEditor() {
         </div>
       </div>
 
-      <div className="mt-4">
-        <PipelineStepper current={current} />
-      </div>
+      {/* pipeline UI removed for demo */}
 
       <div className="mt-4 rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-center">
         <PremiumLoader status={current} progress={progress} />

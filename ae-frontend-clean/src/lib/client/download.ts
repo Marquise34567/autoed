@@ -2,6 +2,7 @@
 
 import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 import { apiFetch } from '@/lib/client/apiClient'
+import { apiUrl } from '@/lib/apiBase'
 
 /**
  * Minimal client helper to initiate a secure download.
@@ -14,7 +15,7 @@ export async function startDownload(jobId: string) {
   if (!user) throw new Error('Not authenticated')
   const idToken = await user.getIdToken(true)
 
-    const resp = await apiFetch('/api/proxy/video/download', {
+    const resp = await apiFetch(apiUrl('/api/proxy/video/download'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

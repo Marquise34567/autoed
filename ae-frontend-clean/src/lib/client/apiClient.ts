@@ -1,10 +1,11 @@
 "use client"
 
 import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
+import { apiUrl } from '@/lib/apiBase'
 import { auth, isFirebaseConfigured } from '@/lib/firebase.client'
 
-// Final API URL: prefer explicit NEXT_PUBLIC_API_URL, fallback to central API_BASE
-const ENV_BASE = (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || CENTRAL_API_BASE || ''
+// Final API URL: prefer explicit NEXT_PUBLIC_API_BASE_URL, then NEXT_PUBLIC_API_URL, then central API_BASE
+const ENV_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL && String(process.env.NEXT_PUBLIC_API_BASE_URL).trim()) || (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || CENTRAL_API_BASE || ''
 
 function missingBaseError() {
   const msg = 'NEXT_PUBLIC_API_URL is not configured. Set this env var in Vercel.'
@@ -34,15 +35,18 @@ export async function apiFetch(pathOrUrl: string, opts: RequestInit = {}) {
   if (pathOrUrl.startsWith('http')) {
     url = pathOrUrl
   } else if (pathOrUrl.startsWith('/')) {
-    // If this is the proxy route, keep it as a same-origin relative path
-    if (pathOrUrl.startsWith('/api/proxy/')) {
-      url = pathOrUrl
-    } else {
-      // Ensure other paths like `/api/upload` resolve to the configured backend
+    // Build absolute URL using configured base so `/api/proxy/*` calls go to backend
+    try {
+      url = apiUrl(pathOrUrl)
+    } catch (_) {
       url = base + pathOrUrl
     }
   } else {
-    url = base + '/' + pathOrUrl
+    try {
+      url = apiUrl('/' + pathOrUrl)
+    } catch (_) {
+      url = base + '/' + pathOrUrl
+    }
   }
 
   // Log the resolved URL for debugging (inline with user's request)

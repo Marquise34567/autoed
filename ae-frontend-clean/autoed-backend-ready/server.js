@@ -52,7 +52,19 @@ app.use(express.json({ limit: '25mb' }))
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 
 // CORS: allow all for simplicity (adjust for production)
-app.use(cors())
+// CORS: allow production, vercel previews, and localhost dev
+const allowedOrigins = ['https://autoeditor.app', 'https://www.autoeditor.app', 'http://localhost:3000', 'http://127.0.0.1:3000']
+const vercelPreviewRegex = /https:\/\/.*\.vercel\.app$/
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) return callback(null, true)
+    return callback(new Error('Not allowed by CORS'))
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+app.use(cors(corsOptions))
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
@@ -115,6 +127,28 @@ app.post('/api/jobs', async (req, res) => {
     return res.status(200).json({ ok: true, jobId: createdJobId, received: { storagePath: normalizedPath, downloadURL: downloadURL || null, uid, gsUri }, message: 'Job accepted' })
   } catch (err) {
     console.error('Job route error:', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// POST /api/proxy/upload-url — return a signed upload URL for client use
+app.post('/api/proxy/upload-url', async (req, res) => {
+  try {
+    const { storagePath, contentType } = req.body || {}
+    if (!storagePath) return res.status(400).json({ error: 'Missing required field: storagePath' })
+
+    const fb = initFirebaseAdmin()
+    if (!fb.ok) return res.status(500).json({ error: 'Firebase admin not configured' })
+
+    const normalizedPath = String(storagePath).replace(/^\/+/, '')
+    const bucket = admin.storage().bucket()
+    const file = bucket.file(normalizedPath)
+    const expiresAt = Date.now() + 15 * 60 * 1000
+    const [url] = await file.getSignedUrl({ version: 'v4', action: 'write', expires: expiresAt })
+
+    return res.json({ ok: true, url, method: 'PUT', headers: { 'Content-Type': contentType || 'application/octet-stream' }, storagePath: normalizedPath })
+  } catch (err) {
+    console.error('/api/proxy/upload-url error:', err)
     return res.status(500).json({ error: 'Internal server error' })
   }
 })
