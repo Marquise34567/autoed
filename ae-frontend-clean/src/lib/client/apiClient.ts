@@ -21,7 +21,8 @@ async function getAuthHeader(): Promise<Record<string,string>> {
 }
 
 export async function apiFetch(pathOrUrl: string, opts: RequestInit = {}) {
-  if (!ENV_BASE) throw missingBaseError()
+  // Allow same-origin calls when ENV_BASE is not set. This lets browser
+  // requests use relative `/api/...` routes which Vercel will proxy.
   // If caller passed an absolute URL, use it. If caller passed a leading-slash
   // path (e.g. `/api/jobs`) keep it as a same-origin relative URL so the
   // browser will call the Next.js `/api/*` route and Vercel can proxy it.

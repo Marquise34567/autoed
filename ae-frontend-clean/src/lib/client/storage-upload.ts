@@ -3,7 +3,7 @@
  * using the Web SDK's resumable upload API (`uploadBytesResumable`).
  */
 
-import { auth as firebaseAuth } from '@/lib/firebase.client'
+import { apiFetch } from '@/lib/client/apiClient'
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 
@@ -23,54 +23,27 @@ export async function uploadVideoToStorage(
     )
   }
 
-  // Upload file to backend endpoint via same-origin relative path
   const path = '/api/upload'
-  const url = path
 
-  return await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', url, true)
+  // Note: `fetch` doesn't provide upload progress natively. We call onProgress(0)
+  // before starting and onProgress(100) after completion so UI can update.
+  try { if (onProgress) onProgress(0) } catch (_) {}
 
-    // Attach auth token if available
-    ;(async () => {
-      try {
-        const current = (firebaseAuth as any)?.currentUser
-        if (current && typeof current.getIdToken === 'function') {
-          const token = await current.getIdToken(true)
-          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-        }
-      } catch (_) {}
-    })()
+  const form = new FormData()
+  form.append('file', file, file.name)
 
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable && onProgress) {
-        try { onProgress((ev.loaded / ev.total) * 100) } catch (_) {}
-      }
-    }
+  const resp = await apiFetch(path, { method: 'POST', body: form })
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText || '{}')
-          const storagePath = data.storagePath || data.path || data.storage_path
-          const downloadURL = data.downloadUrl || data.downloadURL || data.url || data.download_url
-          if (!storagePath || !downloadURL) {
-            reject(new Error('Upload succeeded but backend did not return storagePath/downloadUrl'))
-            return
-          }
-          resolve({ storagePath, downloadURL })
-        } catch (e) {
-          reject(new Error(`Invalid JSON response from upload endpoint: ${String(e)}`))
-        }
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText || ''}`))
-      }
-    }
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '')
+    throw new Error(`Upload failed: ${resp.status} ${text}`)
+  }
 
-    xhr.onerror = () => reject(new Error('Network error during upload'))
+  const data = await resp.json().catch(() => ({}))
+  const storagePath = data.storagePath || data.path || data.storage_path
+  const downloadURL = data.downloadUrl || data.downloadURL || data.url || data.download_url
+  if (!storagePath || !downloadURL) throw new Error('Upload succeeded but backend did not return storagePath/downloadUrl')
 
-    const form = new FormData()
-    form.append('file', file, file.name)
-    try { xhr.send(form) } catch (e) { reject(new Error(`Failed to send upload: ${String(e)}`)) }
-  })
+  try { if (onProgress) onProgress(100) } catch (_) {}
+  return { storagePath, downloadURL }
 }
