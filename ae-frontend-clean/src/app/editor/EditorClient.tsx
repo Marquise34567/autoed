@@ -122,7 +122,7 @@ export default function EditorClientPage() {
       }
       console.log('[startEditorPipeline] Creating job with', payload)
       console.log('[startEditorPipeline] POST payload:', JSON.stringify(payload))
-      const createResp = await apiFetch('/api/jobs', {
+      const createResp = await apiFetch('/api/proxy/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -147,7 +147,7 @@ export default function EditorClientPage() {
     try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
     const tick = async () => {
       try {
-        const r = await apiFetch(`/api/jobs/${jid}`)
+        const r = await apiFetch(`/api/proxy/api/jobs/${jid}`)
         if (!r.ok) {
           if (r.status === 404) return
           console.warn('[poll] received', r.status)
@@ -218,7 +218,7 @@ export default function EditorClientPage() {
   // Handle download initiated from completion modal
   const handleModalDownload = async (jid?: string | null) => {
     if (!jid) return
-    const endpoint = `/api/jobs/${jid}/download`
+    const endpoint = `/api/proxy/api/jobs/${jid}/download`
     try {
       // Use apiFetch so auth header is attached when available and the
       // browser calls the same-origin `/api/...` route which Vercel will proxy.

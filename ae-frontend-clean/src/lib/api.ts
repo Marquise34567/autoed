@@ -1,10 +1,12 @@
 // Central API base URL for frontend network requests.
-// Use `NEXT_PUBLIC_API_URL` in your Vercel / Railway environment to point to your backend.
-// Fallback to the Railway app URL when the env var is not set.
-const RAILWAY_FALLBACK = 'https://remarkable-comfort-production-4a9a.up.railway.app'
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || RAILWAY_FALLBACK
+// Use `NEXT_PUBLIC_API_URL` in your Vercel environment to point to your backend.
+// IMPORTANT: We avoid hardcoding production backend URLs in source to prevent
+// browsers from calling the backend directly. The frontend should call
+// Next.js proxy routes (e.g. `/api/proxy/...`) which forward to the backend.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || ''
 
-// Always log the resolved API base to help debugging (will show in browser console).
-/* eslint-disable no-console */
-console.log(`[api] Resolved API_BASE=${API_BASE}`)
-/* eslint-enable no-console */
+if (!API_BASE) {
+	/* eslint-disable no-console */
+	console.warn('[api] NEXT_PUBLIC_API_URL is not set; using proxy routes (/api/proxy/...)')
+	/* eslint-enable no-console */
+}

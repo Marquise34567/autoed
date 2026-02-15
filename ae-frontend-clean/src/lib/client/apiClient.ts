@@ -34,8 +34,13 @@ export async function apiFetch(pathOrUrl: string, opts: RequestInit = {}) {
   if (pathOrUrl.startsWith('http')) {
     url = pathOrUrl
   } else if (pathOrUrl.startsWith('/')) {
-    // Ensure paths like `/api/upload` resolve to the configured backend
-    url = base + pathOrUrl
+    // If this is the proxy route, keep it as a same-origin relative path
+    if (pathOrUrl.startsWith('/api/proxy/')) {
+      url = pathOrUrl
+    } else {
+      // Ensure other paths like `/api/upload` resolve to the configured backend
+      url = base + pathOrUrl
+    }
   } else {
     url = base + '/' + pathOrUrl
   }

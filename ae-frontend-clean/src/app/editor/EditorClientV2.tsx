@@ -21,11 +21,8 @@ import { API_BASE as CENTRAL_API_BASE } from '@/lib/api'
 import { initFetchGuard } from '@/lib/client/fetch-guard'
 initFetchGuard()
 import { apiFetch } from '@/lib/client/apiClient'
-// Prefer explicit env var; fall back to central API_BASE
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || CENTRAL_API_BASE
-// Also expose a concrete API_URL per requirements and log it
-const API_URL = (process.env.NEXT_PUBLIC_API_URL && String(process.env.NEXT_PUBLIC_API_URL).trim()) || 'https://remarkable-comfort-production-4a9a.up.railway.app'
-try { console.log('[api] API_URL =', API_URL) } catch (_) {}
+// Use proxy path for backend requests to avoid CORS; browser should call Next.js proxy
+const PROXY_PREFIX = '/api/proxy'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
@@ -82,9 +79,6 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [jobResp, setJobResp] = useState<JobResponse | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [lastUploadStatus, setLastUploadStatus] = useState<string | null>(null)
-  const [lastJobsStatus, setLastJobsStatus] = useState<string | null>(null)
-  const [lastJobIdDebug, setLastJobIdDebug] = useState<string | null>(null)
   const jobStartRef = useRef<number | null>(null)
   const [smartZoom, setSmartZoom] = useState<boolean>(true)
   const [completionOpen, setCompletionOpen] = useState(false)
@@ -129,7 +123,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     // Prefer the result URL from the polled job state
     if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
     // Fallback: query job status endpoint for the job wrapper
-    const path = `${API_BASE.replace(/\/$/, '')}/api/jobs/${encodeURIComponent(jobId)}`
+    const path = `${PROXY_PREFIX}/api/jobs/${encodeURIComponent(jobId)}`
     try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
     const resp = await apiFetch(path)
     if (!resp.ok) throw new Error('Failed to fetch job')
@@ -156,7 +150,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   function handleUploadButtonClick() {
     try { console.log('[upload] button clicked (handler)') } catch (_) {}
     if (selectedFile) {
-      try { console.log('[upload] start', { apiUrl: API_URL, fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
+      try { console.log('[upload] start', { apiUrl: PROXY_PREFIX, fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
       createJobWithFile(selectedFile)
       return
     }
@@ -206,7 +200,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     setJobId(undefined)
     try {
       // Log upload start with API URL and file metadata
-      try { console.log('[upload] start', { apiUrl: API_URL, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
+      try { console.log('[upload] start', { apiUrl: PROXY_PREFIX, fileName: file?.name, fileSize: file?.size }) } catch (_) {}
 
       // Try server-side upload first (/api/upload). If it fails, fallback to client upload helper.
       let storagePath: string | undefined = undefined
@@ -214,12 +208,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       try {
         // Perform direct fetch to API_URL /api/upload
-        const uploadUrl = `${API_URL.replace(/\/$/, '')}/api/upload`
+        const uploadUrl = `${PROXY_PREFIX}/api/upload`
         try { console.log('[upload] using uploadUrl ->', uploadUrl) } catch (_) {}
         const fd = new FormData()
         fd.append('file', file)
         const upResp = await fetch(uploadUrl, { method: 'POST', body: fd })
-        setLastUploadStatus(`upload status: ${upResp.status}`)
+        try { console.log('[upload] /api/upload status', upResp.status) } catch (_) {}
         let ju: any = {}
         try { ju = await upResp.json().catch(()=>({})) } catch(_) {}
         try { console.log('[upload] /api/upload status', upResp.status) } catch (_) {}
@@ -250,7 +244,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
       console.log('[createJobWithFile] Creating job with', payload)
       console.log('[createJobWithFile] POST payload:', JSON.stringify(payload))
-      const jobsUrl = `${API_URL.replace(/\/$/, '')}/api/jobs`
+      const jobsUrl = `${PROXY_PREFIX}/api/jobs`
       try { console.log('[jobs] POST', jobsUrl) } catch (_) {}
       // Send the upload response (minimal) as `upload` field to the job create endpoint
       const jobBody = { upload: { storagePath, downloadURL, filename: file.name }, status: 'queued' }
@@ -260,13 +254,13 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       } catch (err) {
         throw err
       }
-      setLastJobsStatus(`jobs status: ${resp.status}`)
-      const job = await resp.json().catch(()=>({}))
+      // log job creation status
       try { console.log('[jobs] /api/jobs status', resp.status) } catch (_) {}
+      const job = await resp.json().catch(()=>({}))
       try { console.log('[jobs] /api/jobs json', job) } catch (_) {}
       if (!resp.ok) throw new Error(job?.error || `Job create failed: ${resp.status}`)
       const jid = job.jobId || job.jobID || job.id || job?.id
-      if (jid) setLastJobIdDebug(String(jid))
+      // job id recorded below
       setJobId(jid)
       // record approximate job start time for ETA estimates
       jobStartRef.current = Date.now()
@@ -300,8 +294,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `${API_BASE.replace(/\/$/, '')}/api/jobs/${encodeURIComponent(jid)}`
-        const r = await apiFetch(url)
+        const url = `${PROXY_PREFIX}/api/jobs/${encodeURIComponent(jid)}`
+          const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
             // resource not ready — continue polling
@@ -407,7 +401,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const fullUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}`
+        const fullUrl = `${PROXY_PREFIX}/api/jobs/${jid}`
         try { console.log('[startPollingFallback] GET', fullUrl) } catch (_) {}
         const r = await apiFetch(fullUrl)
         if (!r.ok) {
@@ -553,7 +547,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       return
     }
     // Fallback: use backend download endpoint proxied via Next.js
-    const fullUrl = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}/download`
+    const fullUrl = `${PROXY_PREFIX}/api/jobs/${jid}/download`
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
     try { window.location.href = fullUrl } catch (e) { console.warn('Download redirect failed', e) }
   }
@@ -694,14 +688,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
       {card}
 
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="fixed top-4 right-4 z-50 p-3 space-y-1 text-xs text-white bg-black/60 rounded">
-          <div><strong>API_URL:</strong> {API_URL}</div>
-          <div><strong>lastUploadStatus:</strong> {String(lastUploadStatus)}</div>
-          <div><strong>lastJobsStatus:</strong> {String(lastJobsStatus)}</div>
-          <div><strong>lastJobId:</strong> {String(lastJobIdDebug)}</div>
-        </div>
-      )}
+      
 
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">

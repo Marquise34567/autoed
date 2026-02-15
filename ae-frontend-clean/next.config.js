@@ -10,12 +10,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://remarkable-comfort-production-4a9a.up.railway.app/api/:path*",
-      },
-    ]
+    // No direct rewrites to the backend: we use the server-side proxy at
+    // `/api/proxy/...` instead. Returning empty rewrites prevents direct
+    // forwarding to the Railway URL which can cause CORS issues.
+    return []
   },
 };
 

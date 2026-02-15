@@ -1,7 +1,6 @@
 "use client";
 
 import { auth, isFirebaseConfigured } from "@/lib/firebase.client";
-import { API_BASE } from '@/lib/api'
 import { apiFetch } from '@/lib/client/apiClient'
 
 export async function getOrCreateUserDoc(_uid: string) {
@@ -20,7 +19,7 @@ export async function getOrCreateUserDoc(_uid: string) {
     const headers: Record<string,string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const res = await apiFetch('/api/userdoc', { headers, cache: 'no-store' })
+    const res = await apiFetch('/api/proxy/api/userdoc', { headers, cache: 'no-store' })
     if (!res.ok) {
       console.warn('[userdoc] server responded non-OK', res.status)
       return { plan: 'starter', status: 'unknown', source: 'fallback' }
