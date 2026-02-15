@@ -218,11 +218,11 @@ export default function EditorClientPage() {
   // Handle download initiated from completion modal
   const handleModalDownload = async (jid?: string | null) => {
     if (!jid) return
-    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/jobs/${jid}/download`
+    const endpoint = `/api/jobs/${jid}/download`
     try {
-      // Try fetching - if backend returns JSON { downloadUrl } use it, otherwise fall back to redirecting
-      const resp = await fetch(endpoint, { method: 'GET' })
-      // If JSON response contains a downloadUrl, redirect to it
+      // Use apiFetch so auth header is attached when available and the
+      // browser calls the same-origin `/api/...` route which Vercel will proxy.
+      const resp = await apiFetch(endpoint, { method: 'GET' })
       const contentType = resp.headers.get('content-type') || ''
       if (contentType.includes('application/json')) {
         const data = await resp.json().catch(() => null)
@@ -234,11 +234,11 @@ export default function EditorClientPage() {
         }
       }
     } catch (e) {
-      // ignore and fallback to direct redirect
+      // ignore and fallback to redirect
     }
-    // Fallback: let the browser follow any redirect or download from endpoint
     try {
       setDownloadStarted(true)
+      // Redirect to same-origin endpoint so Next.js/Vercel will proxy to the backend
       window.location.href = endpoint
     } catch (e) {
       console.warn('Download redirect failed', e)
