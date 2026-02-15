@@ -56,7 +56,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   useEffect(() => {
     try { console.log('Navigator online:', navigator.onLine) } catch (_) {}
   }, [])
-
+  export default function EditorClientV2({ compact }: { compact?: boolean } = {}) {
   const [userDoc, setUserDoc] = useState<any | null>(null)
   const [popup, setPopup] = useState<{ title: string; lines: string[] } | null>(null)
   const [status, setStatus] = useState<Status>('idle')
