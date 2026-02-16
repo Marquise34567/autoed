@@ -24,6 +24,24 @@ async function handleProxy(request: Request, params: { path?: string[] }) {
   const method = request.method.toUpperCase()
   const pathParts = Array.isArray(params.path) ? params.path : (params.path ? [params.path as any] : [])
   const path = pathParts.join('/')
+  // If this is the one-off debug route, handle locally to avoid proxying
+  if (path === 'debug/echo-auth') {
+    try {
+      const auth = request.headers.get('authorization') || null
+      const cookie = request.headers.get('cookie') || null
+      const out = {
+        ok: true,
+        authorization_present: !!auth,
+        authorization_length: auth ? auth.length : 0,
+        authorization_preview: auth ? auth.slice(0, 80) : null,
+        cookie_present: !!cookie,
+        cookie_length: cookie ? cookie.length : 0,
+      }
+      return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } })
+    } catch (err) {
+      return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { 'content-type': 'application/json' } })
+    }
+  }
   const url = new URL(request.url)
   const search = url.search || ''
   const target = `${getBackendBase()}/api/${path}${search}`
@@ -49,6 +67,16 @@ async function handleProxy(request: Request, params: { path?: string[] }) {
   }
 
   const proxiedHeaders = filterHeaders(request.headers as unknown as Headers)
+
+  // TEMP LOGGING: show incoming auth/cookie for debugging auth issues
+  try {
+    const authHeader = String(request.headers.get('authorization') || '')
+    const cookieHeader = String(request.headers.get('cookie') || '')
+    if (authHeader) console.log('[proxy][incoming] authorization present, len=', authHeader.length)
+    else console.log('[proxy][incoming] no authorization header')
+    if (cookieHeader) console.log('[proxy][incoming] cookie present, len=', cookieHeader.length)
+    else console.log('[proxy][incoming] no cookie header')
+  } catch (_) {}
 
   let res: Response
   try {
