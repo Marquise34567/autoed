@@ -240,6 +240,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       const jidFromBackend: string | undefined = startJson?.jobId
       if (!jidFromBackend) throw new Error('Backend did not return jobId')
       setJobId(jidFromBackend)
+      try { localStorage.setItem('ae:lastJobId', jidFromBackend) } catch (_) {}
       jobStartRef.current = Date.now()
       setStatus('analyzing')
       startPollingJob(jidFromBackend)
@@ -264,18 +265,21 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     if (!jid) return
     try { if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null } } catch (_) {}
     let cancelled = false
-    let backoff = 1000
+    const POLL_MS = 2500
     const startAt = Date.now()
     const MAX_MS = 10 * 60 * 1000 // 10 minutes
+
+    console.log('[poll] startPollingJob', { jobId: jid })
 
     const tick = async () => {
       if (cancelled) return
       try {
-          const url = `/api/jobs/${encodeURIComponent(jid)}`
-          const r = await apiFetch(url)
+        const url = `/api/jobs/${encodeURIComponent(jid)}`
+        const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {
             // resource not ready — continue polling
+            console.log('[poll] 404, continuing', { jobId: jid })
           } else {
             throw new Error(`status ${r.status}`)
           }
@@ -283,18 +287,19 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           const data: any = await r.json()
           const job: JobResponse & any = data.job || data
           if (!job) return
+          // Normalize status and extract result/final path
+          const state = String(job.status || job.phase || '').toLowerCase()
+          const progress = typeof job.progress === 'number' ? job.progress : (job.progressPercent || job.percentage || null)
+          const resultUrl = job.resultUrl || job.result?.videoUrl || job.result?.url || job.outputUrl || job.finalVideoPath || job.result?.videoURL
+          const finalVideoPath = job.finalVideoPath || job.outputUrl || null
+          // logging each poll
+          try { console.log('[poll] response', { jobId: jid, status: state, progress, resultUrl: !!resultUrl, finalVideoPath: !!finalVideoPath }) } catch (_) {}
+
           setJobResp(job)
 
-          // Log full response once when job is not 'processing'
-          const state = String(job.status || job.phase || '').toLowerCase()
-          if (state !== 'processing' && !loggedJobsRef.current[jid]) {
-            try { console.error('Job failed / updated:', { jobId: jid, job }) } catch (_) {}
-            loggedJobsRef.current[jid] = true
-          }
-
-          // Normalize and update progress
-          if (typeof job.progress === 'number') {
-            const raw = job.progress
+          // update progress
+          if (typeof progress === 'number') {
+            const raw = progress
             const frac = raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw)
             setOverallProgress(frac)
             try {
@@ -307,29 +312,36 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             } catch (_) {}
           }
 
-          // Terminal states: done / complete / failed / error
+          // Terminal handling: completed/failed
           if (state === 'done' || state === 'complete') {
-            setOverallProgress(1)
-            setOverallEtaSec(0)
-            setStatus('done')
-            const resultUrl = job.resultUrl || job.result?.videoUrl || job.result?.url || job.result?.videoURL
-            if (resultUrl) {
-              setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
-              setShowPreview(true)
-              setPreviewUrl(resultUrl)
+            // If result URL or final path not present yet, keep polling until it appears
+            if (!resultUrl && !finalVideoPath) {
+              console.log('[poll] completed but missing result URL — continuing to poll', { jobId: jid })
+            } else {
+              setOverallProgress(1)
+              setOverallEtaSec(0)
+              setStatus('done')
+              if (resultUrl) {
+                setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
+                setShowPreview(true)
+                setPreviewUrl(resultUrl)
+              }
+              console.log('[poll] job completed - stopping poll', { jobId: jid })
+              cancelled = true
+              return
             }
-            cancelled = true
-            return
           }
 
           if (state === 'error' || state === 'failed') {
             const msg = job.errorMessage || job.error?.message || job.message
             setStatus('error')
             setErrorMessage(msg || 'Processing failed (no error message returned).')
+            console.log('[poll] job failed - stopping poll', { jobId: jid, message: msg })
             cancelled = true
             return
           }
 
+          // Map backend states to UI states (lowercase-comparison)
           const map: Record<string, Status> = {
             queued: 'analyzing',
             analyzing: 'analyzing',
@@ -344,7 +356,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         }
       } catch (e: any) {
         console.warn('[poll] fetch error', e)
-        // transient network error — continue polling with backoff until timeout
+        // continue polling on transient errors
       }
 
       if (!cancelled) {
@@ -352,12 +364,11 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         if (elapsed > MAX_MS) {
           setErrorMessage('Processing timed out. Please try again.')
           setStatus('error')
+          console.log('[poll] timed out', { jobId: jid })
           cancelled = true
           return
         }
-        const wait = Math.min(10000, backoff)
-        backoff = Math.min(10000, Math.round(backoff * 2))
-        pollRef.current = window.setTimeout(tick, wait) as unknown as number
+        pollRef.current = window.setTimeout(tick, POLL_MS) as unknown as number
       }
     }
 
@@ -495,6 +506,16 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       if (stored) setLastCelebratedJobId(stored)
     } catch (e) {}
 
+    // On mount, restore last job id if present and resume polling
+    try {
+      const last = typeof window !== 'undefined' ? localStorage.getItem('ae:lastJobId') : null
+      if (last && !jobId) {
+        setJobId(last)
+        // resume polling for restored job id
+        startPollingJob(last)
+      }
+    } catch (e) {}
+
     if (status === 'done' && jobId) {
       setShowPreview(true);
     }
@@ -518,8 +539,8 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   // Direct download handler: redirect browser to backend download endpoint
   const handleDownload = (jid?: string) => {
     if (!jid) return
-    // Prefer direct result URL if available
-    const resultUrl = jobResp?.result?.videoUrl || previewUrl
+    // Prefer direct result URL if available (or final path)
+    const resultUrl = jobResp?.result?.videoUrl || previewUrl || jobResp?.finalVideoPath || (jobResp as any)?.outputUrl
     if (resultUrl) {
       try { window.open(resultUrl, '_blank') } catch (e) { console.warn('Open result url failed', e) }
       return
@@ -668,6 +689,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 <div className="text-red-200">{errorMessage}</div>
                 <div className="flex items-center gap-2">
                   <button onClick={()=>{ try { navigator.clipboard.writeText(String(errorMessage)) } catch(_){} }} className="px-3 py-1 rounded-full bg-white/6">Copy</button>
+                  <button onClick={()=>{ reset() }} className="px-3 py-1 rounded-full bg-white/6">Try again</button>
                 </div>
               </div>
             )}
