@@ -3,12 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 // PipelineStepper removed
 import ProgressBar from '@/components/ProgressBar'
-import JobDetails from '@/components/editor/JobDetails'
-import SubscriptionCard from '@/components/subscription/SubscriptionCard'
-import NotificationPopup from '@/components/NotificationPopup'
-import PremiumLoader from '@/components/PremiumLoader'
-import ProcessingCard from '@/components/editor-v2/ProcessingCard'
 import CompletionModal from '@/components/CompletionModal'
+import Card from '@/components/editor-v2/ui/Card'
+import StatusPill from '@/components/editor-v2/ui/StatusPill'
+import Timeline from '@/components/editor-v2/ui/Timeline'
+import JobsTable from '@/components/editor-v2/ui/JobsTable'
 import { planFeatures } from '@/lib/plans'
 import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
 import { useAuth } from '@/lib/auth/useAuth'
@@ -56,7 +55,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   useEffect(() => {
     try { console.log('Navigator online:', navigator.onLine) } catch (_) {}
   }, [])
-  export default function EditorClientV2({ compact }: { compact?: boolean } = {}) {
+  
   const [userDoc, setUserDoc] = useState<any | null>(null)
   const [popup, setPopup] = useState<{ title: string; lines: string[] } | null>(null)
   const [status, setStatus] = useState<Status>('idle')
@@ -234,6 +233,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       try { console.log('[jobs] /jobs create status', startResp.status) } catch (_) {}
       if (!startResp.ok) {
         const txt = await startResp.text().catch(()=>'')
+        try { console.error('JOB CREATE ERROR:', startResp.status, txt) } catch (_) {}
         throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
       const startJson: any = await startResp.json().catch(()=>({}))
@@ -549,111 +549,142 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   }, [userDoc])
 
   const card = (
-    <div className="w-full max-w-2xl p-6">
-      <div className={`rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(7,9,15,0.65),rgba(7,9,15,0.5))] p-6 backdrop-blur-xl shadow-[0_24px_60px_rgba(2,6,23,0.6)]`}>
-        <div className="flex items-center justify-between">
+    <div className="w-full max-w-6xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <img src="/favicon.svg" className="h-8 w-8" alt="AutoEditor" />
           <div>
-            <h2 className="text-2xl font-bold">Editor</h2>
-            <div className="text-xs text-white/60 mt-1">AI-assisted editing</div>
+            <div className="text-lg font-semibold">AutoEditor</div>
+            <div className="text-xs text-white/60">AI Video Editor</div>
           </div>
         </div>
+        <div className="text-center text-xl font-semibold">Editor</div>
+        <div className="flex items-center gap-4">
+          <button className="px-4 py-2 rounded-full bg-linear-to-br from-[#ff7ab6] to-[#7c3aed] text-white font-semibold shadow-lg">Upgrade</button>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">U</div>
+          </div>
+        </div>
+      </div>
 
-        {/* pipeline UI removed */}
-
-        <div className="grid grid-cols-12 gap-8">
-          {/* Left: upload + original preview */}
-          <div className="col-span-7 space-y-5">
-            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6 hover:shadow-lg transform-gpu transition-transform hover:-translate-y-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-white/70">Upload</div>
-                  <div className="font-semibold text-white">Select a video to analyze</div>
-                </div>
-                <div className="text-sm text-white/60">{selectedFile ? `${selectedFile.name}` : ''}</div>
-              </div>
-
-              <div className="mt-4 flex items-center gap-3">
-                <input
-                  type="file"
-                  accept="video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
-                  hidden
-                  ref={fileInputRef}
-                  onChange={handleFileSelected}
-                />
-
-                <button
-                  onClick={handleUploadButtonClick}
-                  disabled={isUploading || (status !== 'idle' && status !== 'done')}
-                  className={`px-4 py-2 rounded-full font-semibold transition shadow-md ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white hover:shadow-[0_8px_30px_rgba(124,58,237,0.24)]'}`}
-                >
-                  {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Upload New' : 'Upload')}
-                </button>
-
-                {status === 'done' && (jobResp?.result?.videoUrl || jobId) && (
-                  <button onClick={() => handleDownload(jobId)} className="px-4 py-2 rounded-full bg-white text-black font-semibold shadow-md hover:scale-[1.02]">Download</button>
-                )}
-
-                <button onClick={reset} className="px-3 py-2 rounded-full border border-white/12 text-white/80 hover:bg-white/6 transition">Reset</button>
-              </div>
-
-              <div className="mt-3 text-xs text-white/60">Tips: MP4/MOV/WEBM supported — up to 1 GB.</div>
-              <div className="mt-3 flex items-center gap-2">
-                <input id="v2-smartzoom" type="checkbox" checked={smartZoom} onChange={(e)=>setSmartZoom(e.target.checked)} className="h-4 w-4" />
-                <label htmlFor="v2-smartzoom" className="text-xs text-white/80">Smart Zoom (recommended)</label>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left column: Create Edit */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white/60">Create Edit</div>
+              <div className="text-2xl font-bold">Upload & Start</div>
             </div>
-
-            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-white/70">Original</div>
-                <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Original</div>
-              </div>
-              <div className="mt-3 rounded-md overflow-hidden bg-black/60 h-44 flex items-center justify-center">
-                {originalUrl ? (
-                  <video src={originalUrl} controls className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-sm text-white/60">No file selected — thumbnail preview will appear here</div>
-                )}
-              </div>
-            </div>
+            <div className="text-sm text-white/50">MP4 • MOV • WEBM</div>
           </div>
 
-          {/* Right: progress, result preview, details */}
-          <div className="col-span-5 space-y-5">
-              <ProcessingCard
-                status={status}
-                overallProgress={(jobResp?.progress ?? overallProgress) as any}
-                detectedDurationSec={detectedDurationSec}
-                overallEtaSec={overallEtaSec}
-                jobId={jobId}
-                jobResp={jobResp}
-                fileName={selectedFile ? selectedFile.name : jobResp?.result?.filename}
-                smartZoom={smartZoom}
-                errorMessage={errorMessage}
+          <div className="mt-6">
+            <div
+              onClick={openFilePicker}
+              role="button"
+              tabIndex={0}
+              className="w-full rounded-2xl border-2 border-dashed border-white/8 p-8 flex flex-col items-center justify-center text-center hover:shadow-[0_12px_40px_rgba(124,58,237,0.12)] transition cursor-pointer"
+            >
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
+                hidden
+                ref={fileInputRef}
+                onChange={handleFileSelected}
               />
-            <div className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-white/70">Result</div>
-                <div className="text-xs text-white/50 px-2 py-1 rounded-full bg-white/6">Rendered</div>
+              <div className="text-white/80 font-semibold">Drag & drop or click to select a video</div>
+              <div className="text-xs text-white/60 mt-2">Up to 1 GB</div>
+            </div>
+
+            {selectedFile && (
+              <div className="mt-4 flex items-center justify-between bg-[rgba(255,255,255,0.02)] p-3 rounded-lg border border-white/6">
+                <div>
+                  <div className="font-medium">{selectedFile.name}</div>
+                  <div className="text-xs text-white/60">{Math.round(selectedFile.size/1024/1024)} MB • {selectedFile.type || 'video'}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleUploadButtonClick} disabled={isUploading || (status !== 'idle' && status !== 'done')} className={`px-5 py-2 rounded-full font-semibold transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white hover:-translate-y-0.5 shadow-lg'}`}>
+                    {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Start New Edit' : 'Start Edit')}
+                  </button>
+                </div>
               </div>
-              <div className="mt-3">
-                {status === 'done' && (jobResp?.result?.videoUrl || previewUrl) ? (
-                  <div className="rounded-md overflow-hidden bg-black/60">
-                    <video src={jobResp?.result?.videoUrl || previewUrl} controls className="w-full h-40 object-cover" />
-                    <div className="p-3 flex items-center justify-between">
-                      <div className="text-sm text-white/80">Rendered output</div>
-                      <div>
-                        <button onClick={() => setShowPreview(true)} className="px-3 py-1 rounded-full bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white font-semibold">Open</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-white/60">Preview will be available when processing completes</div>
-                )}
-              </div>
+            )}
+
+            <div className="mt-4">
+              <details className="text-sm text-white/70">
+                <summary className="cursor-pointer">Advanced settings</summary>
+                <div className="mt-3 text-xs text-white/60">
+                  <label className="flex items-center gap-2"><input id="v2-smartzoom" type="checkbox" checked={smartZoom} onChange={(e)=>setSmartZoom(e.target.checked)} className="h-4 w-4" /> Smart Zoom (recommended)</label>
+                </div>
+              </details>
             </div>
           </div>
-        </div>
+        </Card>
+
+        {/* Right column: Job Status */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white/60">Job Status</div>
+              <div className="text-lg font-semibold">Live</div>
+            </div>
+            <StatusPill status={status} />
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-4">
+              <ProgressBar value={(jobResp?.progress ?? overallProgress) as any} />
+              <div className="flex items-center justify-between text-xs text-white/60 mt-2">
+                <div>{Math.round(((jobResp?.progress ?? overallProgress) || 0) * 100)}%</div>
+                <div>{overallEtaSec ? `${overallEtaSec}s remaining` : ''}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm text-white/70">
+              <div>
+                <div className="text-xs">Detected length</div>
+                <div className="font-medium text-white/90">{detectedDurationSec ? `${Math.round(detectedDurationSec)}s` : '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs">Estimated time</div>
+                <div className="font-medium text-white/90">{overallEtaSec ? `${overallEtaSec}s` : '—'}</div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="text-xs text-white/60">Current step</div>
+              <div className="font-medium text-white/90 mt-1">{jobResp?.status || status}</div>
+            </div>
+
+            <div className="mt-4">
+              <div className="text-xs text-white/60">Recent steps</div>
+              <div className="mt-2">
+                <Timeline steps={[jobResp?.message || '', String(jobResp?.status || ''), ...(jobResp?.segments?.map((s:any)=>s.reason || `${s.start}-${s.end}`) || [])].filter(Boolean)} />
+              </div>
+            </div>
+
+            {errorMessage && (
+              <div className="mt-4 p-3 rounded-lg bg-red-600/20 border border-red-600 text-sm flex items-center justify-between">
+                <div className="text-red-200">{errorMessage}</div>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=>{ try { navigator.clipboard.writeText(String(errorMessage)) } catch(_){} }} className="px-3 py-1 rounded-full bg-white/6">Copy</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-sm text-white/60">Recent Jobs</div>
+              <div className="text-lg font-semibold">Last jobs</div>
+            </div>
+          </div>
+          <JobsTable onView={(id)=>{ router.push(`/jobs/${id}`) }} onDownload={(id)=>handleDownload(id)} />
+        </Card>
       </div>
     </div>
   )
@@ -663,6 +694,20 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   return (
     <div className="min-h-screen bg-[#07090f] text-white flex items-center justify-center p-6">
       {card}
+
+      {/* Mobile sticky start bar */}
+      <div className="md:hidden">
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <div className="bg-[rgba(255,255,255,0.02)] p-3 rounded-2xl flex items-center justify-between border border-white/6">
+            <div className="text-sm text-white/80">{selectedFile ? selectedFile.name : 'Ready to upload'}</div>
+            <div>
+              <button onClick={handleUploadButtonClick} disabled={isUploading || (status !== 'idle' && status !== 'done')} className={`px-5 py-2 rounded-full font-semibold transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white shadow-lg'}`}>
+                {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Start New' : 'Start Edit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       
 
