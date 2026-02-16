@@ -68,6 +68,31 @@ app.use(cors(corsOptions))
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
+// Debug endpoint to echo selected incoming headers (safe) — used to verify proxy/header forwarding
+app.get('/api/debug/echo-auth', (req, res) => {
+  try {
+    const received = {}
+    const safeKeys = ['content-type', 'user-agent', 'x-forwarded-for', 'x-forwarded-proto', 'host']
+    for (const k of safeKeys) {
+      const v = req.get(k)
+      if (v) received[k] = v
+    }
+
+    const authHeader = req.get('authorization') || req.get('Authorization') || ''
+    const hasAuthHeader = !!authHeader
+    let authHeaderPrefix = 'Missing'
+    if (hasAuthHeader) {
+      if (authHeader.startsWith('Bearer ')) authHeaderPrefix = 'Bearer'
+      else authHeaderPrefix = 'Other'
+    }
+
+    return res.json({ ok: true, hasAuthHeader, authHeaderPrefix, receivedHeaders: received })
+  } catch (err) {
+    console.error('/api/debug/echo-auth error', err)
+    return res.status(500).json({ ok: false, error: 'internal' })
+  }
+})
+
 // POST /api/jobs — create a job record (no processing here)
 app.post('/api/jobs', async (req, res) => {
   try {
