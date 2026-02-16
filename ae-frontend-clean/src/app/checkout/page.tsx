@@ -45,9 +45,10 @@ function CheckoutContent() {
         // ignore token retrieval errors; server will enforce auth if required
       }
 
-          const response = await apiFetch(apiUrl('/api/proxy/stripe/checkout'), {
+          headers['Content-Type'] = 'application/json'
+          const response = await apiFetch('/api/proxy/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           planId,
           billingCycle,

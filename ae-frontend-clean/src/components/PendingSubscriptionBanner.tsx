@@ -29,7 +29,7 @@ export function PendingSubscriptionBanner() {
     }
 
     // Check billing status API for pending verification
-      apiFetch(apiUrl('/api/proxy/billing/status'))
+      apiFetch('/api/proxy/billing/status')
         .then(async (res) => {
           if (!res.ok) {
             const txt = await res.text().catch(() => '')

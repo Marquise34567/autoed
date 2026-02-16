@@ -20,7 +20,7 @@ export async function getOrCreateUserDoc(_uid: string) {
     const headers: Record<string,string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const res = await apiFetch(apiUrl('/api/proxy/userdoc'), { headers, cache: 'no-store' })
+    const res = await apiFetch('/api/proxy/userdoc', { headers, cache: 'no-store' })
     if (!res.ok) {
       console.warn('[userdoc] server responded non-OK', res.status)
       // Fallback so editor remains usable even when userdoc fetch fails

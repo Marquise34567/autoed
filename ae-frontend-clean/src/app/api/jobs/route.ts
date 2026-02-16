@@ -1,44 +1,60 @@
 import { NextResponse } from "next/server";
 
-const BACKEND =
-  process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_BASE || process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.NEXT_PUBLIC_API_BASE_URL;
+function getBackend() {
+  const raw = process.env.BACKEND_URL;
+  if (!raw) throw new Error("BACKEND_URL is missing in env.");
+  return raw.replace(/\/+$/, "");
+}
+
+function passAuth(req: Request) {
+  const auth = req.headers.get("authorization");
+  return auth ? { authorization: auth } : {};
+}
+
+async function toJsonOrText(res: Response) {
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return await res.json();
+  return await res.text();
+}
 
 export async function GET(req: Request) {
   try {
-    if (!BACKEND) {
-      console.error('[api/jobs] Missing BACKEND env var (NEXT_PUBLIC_API_URL or BACKEND_BASE)');
-      return NextResponse.json({ ok: false, error: "Missing BACKEND_BASE env var" }, { status: 500 });
-    }
+    const u = new URL(req.url);
+    const upstream = `${getBackend()}/api/jobs${u.search}`;
 
-    const url = new URL(req.url);
-    const target = `${BACKEND.replace(/\/+$/, '')}/api/jobs${url.search}`;
-
-    console.log('[api/jobs] proxying to backend:', { BACKEND, target });
-
-    const r = await fetch(target, {
+    const res = await fetch(upstream, {
       method: "GET",
-      headers: {
-        accept: "application/json",
-        cookie: req.headers.get("cookie") ?? "",
-        authorization: req.headers.get("authorization") ?? "",
-      },
+      headers: { ...passAuth(req) },
       cache: "no-store",
     });
 
-    const text = await r.text();
+    const body = await toJsonOrText(res);
+    if (!res.ok) console.error("[/api/jobs GET] upstream fail", { upstream, status: res.status, body });
 
-    if (r.status >= 400) {
-      try { console.error('[api/jobs] backend error', { status: r.status, body: text }); } catch (_) {}
-    }
-
-    return new NextResponse(text, {
-      status: r.status,
-      headers: {
-        "content-type": r.headers.get("content-type") || "application/json",
-      },
-    });
+    return NextResponse.json(body, { status: res.status });
   } catch (e: any) {
-    console.error("API_JOBS_PROXY_ERROR", e);
-    return NextResponse.json({ ok: false, error: "Proxy failed", detail: e?.message || String(e) }, { status: 500 });
+    console.error("[/api/jobs GET] crash", e?.stack || e);
+    return NextResponse.json({ error: "internal_error", detail: String(e?.message || e) }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const upstream = `${getBackend()}/api/jobs`;
+    const payload = await req.json().catch(() => ({}));
+
+    const res = await fetch(upstream, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...passAuth(req) },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await toJsonOrText(res);
+    if (!res.ok) console.error("[/api/jobs POST] upstream fail", { upstream, status: res.status, body });
+
+    return NextResponse.json(body, { status: res.status });
+  } catch (e: any) {
+    console.error("[/api/jobs POST] crash", e?.stack || e);
+    return NextResponse.json({ error: "internal_error", detail: String(e?.message || e) }, { status: 500 });
   }
 }

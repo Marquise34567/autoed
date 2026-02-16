@@ -41,7 +41,7 @@ export function BillingDebugPanel() {
   async function refreshStatus() {
     setLoading(true);
     try {
-      const res = await apiFetch(apiUrl('/api/proxy/billing/status'));
+      const res = await apiFetch('/api/proxy/billing/status');
       if (res.ok) {
         const data = await res.json();
         setBillingStatus(data);
@@ -60,7 +60,7 @@ export function BillingDebugPanel() {
   async function activate() {
     setLoading(true);
     try {
-      const res = await apiFetch(apiUrl('/api/proxy/billing/manual-activate'), {
+      const res = await apiFetch('/api/proxy/billing/manual-activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: 'starter' }),
@@ -83,7 +83,7 @@ export function BillingDebugPanel() {
     if (!confirm('Reset to free tier? This cannot be undone.')) return;
     setLoading(true);
     try {
-      const res = await apiFetch(apiUrl('/api/proxy/billing/reset'), {
+      const res = await apiFetch('/api/proxy/billing/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
