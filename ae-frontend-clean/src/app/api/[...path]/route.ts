@@ -17,7 +17,9 @@ function filterHeaders(src: Headers): Headers {
 }
 
 function getBackendBase(): string {
-  return (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://autoed-backend-production.up.railway.app').replace(/\/+$/, '')
+  // Prefer server-only env var BACKEND_ORIGIN for production proxy
+  const prefer = process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://autoed-backend-production.up.railway.app'
+  return String(prefer).replace(/\/+$|\\s+$/g, '')
 }
 
 async function handleProxy(request: Request, params: { path?: string[] }) {
@@ -89,7 +91,7 @@ async function handleProxy(request: Request, params: { path?: string[] }) {
     })
   } catch (err) {
     // Network / fetch error — surface to browser for easier debugging
-    console.error('[proxy] Network error fetching upstream', target, err)
+    console.error('[proxy] Network error fetching upstream', target, String(err))
     return new Response(JSON.stringify({ error: 'upstream_fetch_error', message: String(err) }), { status: 502, headers: { 'content-type': 'application/json' } })
   }
 
@@ -120,24 +122,31 @@ async function handleProxy(request: Request, params: { path?: string[] }) {
   return new Response(buffer, { status: res.status, headers: responseHeaders })
 }
 
-export async function GET(request: Request, { params }: { params: { path?: string[] } }) {
+export async function GET(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function POST(request: Request, { params }: { params: { path?: string[] } }) {
+export async function POST(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function PUT(request: Request, { params }: { params: { path?: string[] } }) {
+export async function PUT(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function PATCH(request: Request, { params }: { params: { path?: string[] } }) {
+export async function PATCH(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function DELETE(request: Request, { params }: { params: { path?: string[] } }) {
+export async function DELETE(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function HEAD(request: Request, { params }: { params: { path?: string[] } }) {
+export async function HEAD(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
-export async function OPTIONS(request: Request, { params }: { params: { path?: string[] } }) {
+export async function OPTIONS(request: Request, ctx: { params?: { path?: string[] } }) {
+  const params = await (ctx.params as any)
   return handleProxy(request, params)
 }
