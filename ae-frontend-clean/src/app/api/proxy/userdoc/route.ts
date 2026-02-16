@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 
-function getBackend() {
-  const raw = process.env.BACKEND_URL;
-  if (!raw) throw new Error("BACKEND_URL is missing in env.");
-  return raw.replace(/\/+$/, "");
+function backend() {
+  let raw = (process.env.BACKEND_URL || "").trim();
+  if (!raw) throw new Error("BACKEND_URL missing in env");
+
+  raw = raw.replace(/\/+$/, "");
+  if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+    raw = `https://${raw}`;
+  }
+  return raw;
 }
 
 export async function GET(req: Request) {
-  const upstream = `${getBackend()}/api/userdoc`;
+  const upstream = `${backend()}/api/userdoc`;
+
   try {
     const auth = req.headers.get("authorization") || "";
 
@@ -20,14 +26,16 @@ export async function GET(req: Request) {
     const ct = res.headers.get("content-type") || "";
     const body = ct.includes("application/json") ? await res.json() : await res.text();
 
-    if (!res.ok) {
-      console.error("[/api/proxy/userdoc GET] upstream non-ok", { upstream, status: res.status, body });
-      return NextResponse.json({ error: "bad_gateway", upstream, status: res.status, body }, { status: 502 });
-    }
-
-    return NextResponse.json(body, { status: 200 });
+    // IMPORTANT: pass through backend status (401, 200, etc). Do NOT convert to 502.
+    return NextResponse.json(
+      { upstream, status: res.status, body },
+      { status: res.status }
+    );
   } catch (e: any) {
-    console.error("[/api/proxy/userdoc GET] crash", e?.stack || e);
-    return NextResponse.json({ error: "bad_gateway", upstream, detail: String(e?.message || e) }, { status: 502 });
+    // This is the ONLY time we return 502: when fetch itself fails
+    return NextResponse.json(
+      { error: "upstream_fetch_error", upstream, message: String(e?.message || e) },
+      { status: 502 }
+    );
   }
 }
