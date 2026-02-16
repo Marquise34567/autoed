@@ -10,9 +10,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
-    // No direct rewrites to the backend: we use the server-side proxy at
-    // `/api/proxy/...` instead. Returning empty rewrites prevents direct
-    // forwarding to the Railway URL which can cause CORS issues.
+    // No rewrites here; a server-side catch-all API proxy route will handle
+    // all `/api/:path*` calls and explicitly strip `Origin`/`Referer` headers.
     return []
   },
 };

@@ -11,11 +11,13 @@ import { useAuth } from '@/lib/auth/useAuth'
 import { useState } from 'react'
 import HomeDemoEditor from '@/components/HomeDemoEditor'
 import LoginForm from '@/components/Auth/LoginForm'
+import WaitlistModal from '@/components/WaitlistModal'
 
 export default function HomeClient() {
   const { user, authReady } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<'login'|'signup'>('login')
+  const [showWaitlist, setShowWaitlist] = useState(false)
 
   return (
     <div className="min-h-screen bg-[#07090f] text-white overflow-x-hidden">
@@ -56,6 +58,20 @@ export default function HomeClient() {
             the perfect hook, and renders creator-ready clips with studio-grade
             audio enhancement.
           </p>
+
+          {/* Under construction ribbon + premium join button */}
+          <div className="mt-6 flex items-center gap-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/6 border border-white/10 px-3 py-1 text-sm text-white/80">
+              <span className="font-semibold">Under Construction</span>
+              <span className="text-xs text-white/60">Launching soon</span>
+            </div>
+            <button
+              onClick={() => setShowWaitlist(true)}
+              className="rounded-full px-4 py-2 bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-md hover:brightness-105 transition"
+            >
+              Join Waitlist
+            </button>
+          </div>
           {!user && (
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full sm:w-auto px-4 sm:px-0">
               <Link className="transition hover:text-white" href={`${LOGIN_ROUTE}?mode=signup`}>
@@ -81,6 +97,9 @@ export default function HomeClient() {
               </div>
             </div>
           </div>
+        )}
+        {showWaitlist && (
+          <WaitlistModal open={showWaitlist} onClose={() => setShowWaitlist(false)} />
         )}
         </section>
       </main>

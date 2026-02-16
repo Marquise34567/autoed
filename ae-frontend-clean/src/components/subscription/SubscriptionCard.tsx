@@ -121,10 +121,10 @@ export default function SubscriptionCard({ user }:{ user: any }){
             <a href="/pricing" className="col-span-2 mt-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-3xl bg-white/6 text-white text-sm font-semibold shadow-sm">See pricing</a>
           </>
         ) : (
-        <div className="relative">
-            <input type="hidden" name="uid" value={user?.uid} />
+        <form className="relative" action="/api/manage-billing" method="post">
+            <input type="hidden" name="uid" value={user?.uid ?? ''} />
             <button type="submit" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-3xl bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white font-semibold shadow-[0_8px_30px_rgba(99,102,241,0.18)]">Manage billing</button>
-          </div>
+        </form>
         )}
       </div>
 

@@ -13,8 +13,20 @@ export default function EditorShell({ children }: { children: React.ReactNode })
 
       <div className="h-full w-full p-6 pt-6 pb-6 overflow-auto">
         <div className="mx-auto h-full w-full p-6" style={{ maxWidth: '1400px' }}>
-          <div className="surface p-6">
-            {children}
+          <div className="bg-[rgba(255,255,255,0.03)] rounded-2xl p-6 shadow-lg" style={{ minHeight: '600px' }}>
+            <div className="grid grid-cols-12 gap-6 h-full">
+              <aside className="col-span-3 bg-transparent p-3 rounded-lg border border-white/6">{/* Clips / Library */}
+                {/* Left panel preserved for clip list or controls */}
+              </aside>
+
+              <section className="col-span-6 bg-transparent p-3 rounded-lg">{/* Main canvas / preview */}
+                {children}
+              </section>
+
+              <aside className="col-span-3 bg-transparent p-3 rounded-lg border border-white/6">{/* Right panel: properties / settings */}
+                {/* Properties panel */}
+              </aside>
+            </div>
           </div>
         </div>
       </div>
