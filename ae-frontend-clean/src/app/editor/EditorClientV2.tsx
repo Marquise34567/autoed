@@ -274,7 +274,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const tick = async () => {
       if (cancelled) return
       try {
-        const url = `/api/jobs/${encodeURIComponent(jid)}`
+        const url = `/api/jobs?id=${encodeURIComponent(jid)}`
         const r = await apiFetch(url)
         if (!r.ok) {
           if (r.status === 404) {

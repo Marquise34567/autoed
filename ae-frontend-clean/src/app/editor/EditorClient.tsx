@@ -110,11 +110,17 @@ export default function EditorClientPage() {
   const startJobListening = (jid: string) => {
     if (!jid) return
     try { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } } catch (_) {}
+    try { localStorage.setItem('ae:lastJobId', jid) } catch (_) {}
+    console.log('[poll] startJobListening', { jobId: jid })
+    const POLL_MS = 2500
     const tick = async () => {
       try {
-        const r = await apiFetch(`/api/jobs/${jid}`)
+        const r = await apiFetch(`/api/jobs?id=${encodeURIComponent(jid)}`)
         if (!r.ok) {
-          if (r.status === 404) return
+          if (r.status === 404) {
+            console.log('[poll] 404, continuing', { jobId: jid })
+            return
+          }
           console.warn('[poll] received', r.status)
           return
         }
@@ -122,33 +128,45 @@ export default function EditorClientPage() {
         // backend wraps job in { ok: true, job: { ... } }
         const job = data?.job || data
         if (!job) return
-        console.log('Polled status:', job.status)
+        const state = String(job.status || job.phase || '').toLowerCase()
         const prog = typeof job.progress === 'number' ? job.progress : (typeof job.overallProgress === 'number' ? job.overallProgress : 0)
-        setProgressStep(Math.round(prog * 100))
+        const resultUrl = job.resultUrl || job.result?.videoUrl || job.outputUrl || job.finalVideoPath || null
+        const finalVideoPath = job.finalVideoPath || job.outputUrl || null
+        console.log('[poll] response', { jobId: jid, status: state, progress: prog, resultUrl: !!resultUrl, finalVideoPath: !!finalVideoPath })
+        setProgressStep(Math.round((prog || 0) * 100))
         setJobStatus(job.status || job.phase || '')
-        if ((job.status || job.phase || '').toLowerCase() === 'done') {
-          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
-          // set output URL from job payload
-          const resultUrl = job.resultUrl || job.result?.videoUrl || job.outputUrl
-          if (resultUrl) setOutputUrl(resultUrl)
-          setGenerationDone(true)
-          // Open completion modal once per completed job
-          try {
-            const lower = String(job.status || job.phase || '').toLowerCase()
-            const jobIsComplete = lower === 'done' || lower === 'complete' || lower === 'ready_to_download' || lower === 'ready'
-            if (jobIsComplete && jid && lastShownJobIdRef.current !== jid) {
-              lastShownJobIdRef.current = jid
-            }
-          } catch (e) {
-            // ignore
+
+        // Terminal states handling
+        if (state === 'done' || state === 'complete' || state === 'completed') {
+          // if completed but no url/path yet, continue polling
+          if (!resultUrl && !finalVideoPath) {
+            console.log('[poll] completed but missing result URL — continuing to poll', { jobId: jid })
+          } else {
+            if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+            if (resultUrl) setOutputUrl(resultUrl)
+            setGenerationDone(true)
+            console.log('[poll] job completed - stopping poll', { jobId: jid })
+            try {
+              const lower = state
+              const jobIsComplete = lower === 'done' || lower === 'complete' || lower === 'completed' || lower === 'ready_to_download' || lower === 'ready'
+              if (jobIsComplete && jid && lastShownJobIdRef.current !== jid) {
+                lastShownJobIdRef.current = jid
+              }
+            } catch (e) {}
           }
+        }
+        if (state === 'failed' || state === 'error') {
+          if (pollRef.current) { try { clearInterval(pollRef.current) } catch (_) {} ; pollRef.current = null }
+          const msg = job.errorMessage || job.error?.message || job.message
+          setError(msg || 'Processing failed')
+          console.log('[poll] job failed - stopping poll', { jobId: jid, message: msg })
         }
       } catch (e) {
         console.warn('[poll] fetch error', e)
       }
     }
     tick()
-    pollRef.current = setInterval(tick, 2000) as unknown as number
+    pollRef.current = setInterval(tick, POLL_MS) as unknown as number
   }
 
   async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
