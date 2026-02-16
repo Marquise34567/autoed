@@ -112,8 +112,8 @@ app.get('/userdoc', (req, res) => {
   }
 })
 
-// Jobs route for frontend POSTs
-app.post('/jobs', async (req, res) => {
+// Jobs route for frontend POSTs (support both /jobs and /api/jobs for compatibility)
+async function jobsHandler(req, res) {
   try {
     // Expect `storagePath` (relative path within Firebase Storage bucket) and optional `downloadURL`.
     const { storagePath, downloadURL, uid, jobId, options } = req.body || {}
@@ -146,7 +146,10 @@ app.post('/jobs', async (req, res) => {
     console.error('Job route error:', err)
     return res.status(500).json({ error: 'Internal server error' })
   }
-})
+}
+
+app.post('/jobs', jobsHandler)
+app.post('/api/jobs', jobsHandler)
 
 // POST /api/proxy/upload-url — return a signed upload URL for client use
 app.post('/api/proxy/upload-url', async (req, res) => {
