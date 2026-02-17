@@ -15,6 +15,7 @@ export default function EditorClientV2Modern({ compact }: Props) {
   const [isUploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [jobUrl, setJobUrl] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -34,13 +35,27 @@ export default function EditorClientV2Modern({ compact }: Props) {
       const onProgress = (pct: number) => setProgress(Math.round(pct))
       const { storagePath } = await uploadVideoToStorage(f, onProgress)
       const body = { storagePath, filename: f.name, contentType: f.type }
-      const resp = await apiFetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!resp.ok) {
-        const txt = await resp.text().catch(() => '<unreadable>')
-        try { console.error('JOB CREATE ERROR:', resp.status, txt) } catch (_) {}
-        throw new Error(`Failed to create job: ${resp.status} ${txt}`)
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        throw new Error(`Job creation failed: ${res.status}`)
       }
-      const data = await resp.json()
+
+      const data = await res.json()
+      console.log('JOB RESPONSE:', data)
+
+      const newJobId = data.jobId || data.id || data.job?.id || data.jobID
+
+      if (!newJobId) {
+        console.error('Unexpected job response:', data)
+        throw new Error('Backend did not return jobId')
+      }
+
+      setJobId(newJobId)
       if (data?.resultUrl) setJobUrl(data.resultUrl)
       setUploading(false)
     } catch (e: any) {
