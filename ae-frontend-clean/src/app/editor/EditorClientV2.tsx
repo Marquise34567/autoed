@@ -241,33 +241,39 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         try { console.error('JOB CREATE ERROR:', startResp.status, txt) } catch (_) {}
         throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
-      // Robustly read response body and attempt JSON parse; log raw text if parse fails
-      const text = await startResp.text().catch(() => '')
-      let data: any = {}
+
+      // Robust JSON parse and jobId extraction per spec
+      const rawText = await startResp.text().catch(() => '')
+      let data: any
       try {
-        data = text ? JSON.parse(text) : {}
-      } catch (e) {
-        try { console.log('[jobs] create response text (non-json):', text) } catch (_) {}
-        data = { _rawText: text }
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(`Invalid JSON from backend: ${rawText}`)
       }
 
-      try { console.log('[jobs] /jobs create response', { status: startResp.status, body: data }) } catch (_) {}
+      console.log("[jobs] full response:", data)
 
-      const jobIdFromBackend: string | undefined = data?.jobId || data?.id || data?.job?.id
+      const jobId =
+        data?.jobId ||
+        data?.job?.id ||
+        data?.id ||
+        data?.job_id
 
-      if (!jobIdFromBackend) {
-        try { console.error('Unexpected job response:', data) } catch (_) {}
-        let jsonStr = ''
-        try { jsonStr = JSON.stringify(data) } catch (_) { jsonStr = String(data) }
-        throw new Error(`Backend did not return jobId. Response: ${jsonStr}`)
+      if (!jobId) {
+        throw new Error(
+          "Backend did not return jobId. Full response: " +
+            JSON.stringify(data)
+        )
       }
 
-      setJobId(jobIdFromBackend)
-      try { localStorage.setItem('ae:lastJobId', jobIdFromBackend) } catch (_) {}
+      // Immediately record job id and queued status
+      setJobId(jobId)
+      setStatus("queued")
+
+      try { localStorage.setItem('ae:lastJobId', jobId) } catch (_) {}
       jobStartRef.current = Date.now()
-      // initial status — queued -> processing in UI
-      setStatus('processing')
-      startPollingJob(jobIdFromBackend)
+      // start polling as before
+      startPollingJob(jobId)
     } catch (e: any) {
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')

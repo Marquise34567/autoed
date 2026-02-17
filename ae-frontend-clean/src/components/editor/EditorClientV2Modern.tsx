@@ -45,28 +45,32 @@ export default function EditorClientV2Modern({ compact }: Props) {
         throw new Error(`Job creation failed: ${res.status}`)
       }
 
-      // Robust parse and logging
-      const text = await res.text().catch(() => '')
-      let data: any = {}
+      // Robust JSON parse and jobId extraction per spec
+      const rawText = await res.text().catch(() => '')
+      let data: any
       try {
-        data = text ? JSON.parse(text) : {}
-      } catch (e) {
-        try { console.log('[jobs] create response text (non-json):', text) } catch (_) {}
-        data = { _rawText: text }
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(`Invalid JSON from backend: ${rawText}`)
       }
 
-      try { console.log('JOB RESPONSE:', data) } catch (_) {}
+      console.log("[jobs] full response:", data)
 
-      const newJobId = data?.jobId || data?.id || data?.job?.id
+      const jobId =
+        data?.jobId ||
+        data?.job?.id ||
+        data?.id ||
+        data?.job_id
 
-      if (!newJobId) {
-        try { console.error('Unexpected job response:', data) } catch (_) {}
-        let jsonStr = ''
-        try { jsonStr = JSON.stringify(data) } catch (_) { jsonStr = String(data) }
-        throw new Error(`Backend did not return jobId. Response: ${jsonStr}`)
+      if (!jobId) {
+        throw new Error(
+          "Backend did not return jobId. Full response: " + JSON.stringify(data)
+        )
       }
 
-      setJobId(newJobId)
+      // Immediately set job id (Modern component does not have a status state)
+      setJobId(jobId)
+      // preserve existing behavior: record resultUrl if present
       if (data?.resultUrl) setJobUrl(data.resultUrl)
       setUploading(false)
     } catch (e: any) {
