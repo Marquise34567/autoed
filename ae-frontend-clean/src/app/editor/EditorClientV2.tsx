@@ -69,7 +69,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                       <button className="w-full mt-2 rounded-full px-4 py-2 border border-white/6 text-white/80">See pricing</button>
                     </div>
                   </div>
-                  <div className="mt-4 text-xs text-white/60">Signed in as <span className="font-medium text-white/90">{(user as any)?.id || (user as any)?.email || 'you'}</span></div>
+                  <div className="mt-4 text-xs text-white/60">
+                    Signed in as <span className="font-medium text-white/90">{user?.email ?? '—'}</span>
+                  </div>
                 </Card>
               </div>
             </div>
