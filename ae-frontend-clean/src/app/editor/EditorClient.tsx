@@ -201,6 +201,13 @@ export default function EditorClientPage() {
     if (!jid) return
     const endpoint = `/api/jobs/${jid}/download`
     try {
+      const r = await fetch(`/api/jobs/${jid}/output-signed-url`)
+      const data = await r.json().catch(() => ({}))
+      console.log('[output-signed-url]', r.status, data)
+    } catch (e) {
+      console.warn('[output-signed-url] fetch failed', e)
+    }
+    try {
       // Use apiFetch so auth header is attached when available and the
       // browser calls the same-origin `/api/...` route which Vercel will proxy.
       const resp = await apiFetch(endpoint, { method: 'GET' })

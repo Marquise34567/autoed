@@ -174,6 +174,13 @@ export default function EditorPage() {
     if (!jid) return
     const endpoint = `/api/jobs/${jid}/download`
     try {
+      const r = await fetch(`/api/jobs/${jid}/output-signed-url`)
+      const data = await r.json().catch(() => ({}))
+      console.log('[output-signed-url]', r.status, data)
+    } catch (e) {
+      console.warn('[output-signed-url] fetch failed', e)
+    }
+    try {
       const resp = await apiFetch(endpoint, { method: 'GET' })
       const contentType = resp.headers.get('content-type') || ''
       if (contentType.includes('application/json')) {

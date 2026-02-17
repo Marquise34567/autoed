@@ -663,6 +663,14 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     }
     // Fallback: use backend download endpoint proxied via Next.js
     const fullUrl = `/api/jobs/${jid}/download`
+    try {
+      // Log signed URL body for debugging
+      const r = await fetch(`/api/jobs/${jid}/output-signed-url`)
+      const data = await r.json().catch(() => ({}))
+      console.log('[output-signed-url]', r.status, data)
+    } catch (e) {
+      console.warn('[output-signed-url] fetch failed', e)
+    }
     try { console.log('[handleDownload] redirect to', fullUrl) } catch (_) {}
     try { setCompletionOpen(true); window.location.href = apiUrl(fullUrl) } catch (e) { console.warn('Download redirect failed', e) }
   }
