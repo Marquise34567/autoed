@@ -21,7 +21,14 @@ const configured = missing.length === 0;
 
 if (!configured) {
   // Log a clear, production-safe error — don't throw so app UI stays up
-  console.error('[firebase] Firebase client not configured. Missing NEXT_PUBLIC_FIREBASE_* env vars:', missing.join(', '));
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[firebase] Firebase client not configured. Missing NEXT_PUBLIC_FIREBASE_* env vars:', missing.join(', '));
+    } else {
+      // In production, avoid noisy payloads in logs — emit a concise warning
+      console.warn('[firebase] Firebase client not configured. Missing NEXT_PUBLIC_FIREBASE_* env vars.');
+    }
+  } catch (_) {}
 }
 
 let appInstance: FirebaseApp | null = null;
@@ -36,7 +43,7 @@ if (configured) {
     dbInstance = getFirestore(appInstance);
     storageInstance = getStorage(appInstance);
   } catch (e) {
-    console.error('[firebase] Failed to initialize Firebase client SDK:', e);
+    try { console.warn('[firebase] Failed to initialize Firebase client SDK:', e) } catch (_) {}
     appInstance = null;
     authInstance = null;
     dbInstance = null;
