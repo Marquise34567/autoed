@@ -20,11 +20,6 @@ function passAuth(req: Request) {
   return a ? { authorization: a } : {};
 }
 
-async function readBody(res: Response) {
-  const ct = res.headers.get("content-type") || "";
-  return ct.includes("application/json") ? await res.json() : await res.text();
-}
-
 export async function GET(req: Request) {
   const u = new URL(req.url);
   const upstream = `${backend()}/api/jobs${u.search}`;
@@ -36,8 +31,13 @@ export async function GET(req: Request) {
       cache: "no-store",
     });
 
-    const body = await readBody(res);
-    return NextResponse.json({ upstream, status: res.status, body }, { status: res.status });
+    // Pass-through: return the upstream response body and status directly.
+    const text = await res.text().catch(() => '');
+    const contentType = res.headers.get('content-type') || 'application/json';
+    if (process.env.NODE_ENV === 'development') {
+      try { console.log('[proxy:/api/jobs GET] upstream=', upstream, 'status=', res.status, 'body=', text?.slice ? text.slice(0, 1000) : text) } catch (_) {}
+    }
+    return new Response(text, { status: res.status, headers: { 'content-type': contentType } });
   } catch (e: any) {
     return NextResponse.json(
       { error: "upstream_fetch_error", upstream, message: String(e?.message || e) },
@@ -58,8 +58,13 @@ export async function POST(req: Request) {
       body: JSON.stringify(payload),
     });
 
-    const body = await readBody(res);
-    return NextResponse.json({ upstream, status: res.status, body }, { status: res.status });
+    // Pass-through: return the upstream response body and status directly.
+    const text = await res.text().catch(() => '');
+    const contentType = res.headers.get('content-type') || 'application/json';
+    if (process.env.NODE_ENV === 'development') {
+      try { console.log('[proxy:/api/jobs POST] upstream=', upstream, 'status=', res.status, 'body=', text?.slice ? text.slice(0, 1000) : text) } catch (_) {}
+    }
+    return new Response(text, { status: res.status, headers: { 'content-type': contentType } });
   } catch (e: any) {
     return NextResponse.json(
       { error: "upstream_fetch_error", upstream, message: String(e?.message || e) },
