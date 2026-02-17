@@ -46,47 +46,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         <div className="text-center">
           <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
         </div>
-          <div className="w-full max-w-6xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <img src="/favicon.svg" className="h-9 w-9" alt="AutoEditor" />
-                <div>
-                  <div className="text-2xl font-extrabold tracking-tight">AutoEditor</div>
-                  <div className="text-sm text-white/60">Creator-grade AI Video Editor</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="rounded-full px-4 py-2 bg-gradient-to-br from-pink-500 via-violet-600 to-cyan-400 text-white text-sm font-semibold shadow-[0_10px_30px_rgba(124,58,237,0.18)] hover:scale-[1.02] transition-transform focus:outline-none focus:ring-2 focus:ring-white/20">Upgrade</button>
-                <div className="h-9 w-9 rounded-full bg-white/8 flex items-center justify-center text-sm font-medium">U</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Left: Upload & Start (creator-style card) */}
-              <Card className="md:col-span-5 p-6 relative overflow-hidden">
-                <div className="absolute -left-24 -top-24 w-56 h-56 rounded-full bg-pink-500/6 blur-3xl pointer-events-none" />
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-sm text-white/60">Create Edit</div>
-                    <div className="text-center">
-                      <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
-                      <div className="flex items-center gap-2">
-                        <button onClick={()=>{ try { navigator.clipboard.writeText(String(errorMessage)) } catch(_){} }} className="px-3 py-1 rounded-full bg-white/6">Copy</button>
-                        <button onClick={()=>{ reset() }} className="px-3 py-1 rounded-full bg-white/6">Try again</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
+      </div>
+    )
+  }
               {/* Right: Subscription card area (kept minimal here; EditorGate renders the main subscription aside) */}
               <div className="md:col-span-2 hidden md:block">
                 <Card className="p-4 sticky top-24">
