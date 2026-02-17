@@ -348,7 +348,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
           }
 
           // Terminal handling: completed/failed
-          if (state === 'done' || state === 'complete') {
+          if (state === 'done' || state === 'complete' || state === 'completed') {
             // If result URL or final path not present yet, keep polling until it appears
             if (!resultUrl && !finalVideoPath) {
               console.log('[poll] completed but missing result URL — continuing to poll', { jobId: jid })
@@ -388,6 +388,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             uploading: 'uploading_result',
             done: 'completed',
             complete: 'completed',
+            completed: 'completed',
             error: 'error',
           }
           setStatus(map[state] || 'processing')
@@ -467,7 +468,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       if (Array.isArray(d.segments)) setClips(d.segments)
     }
     const st = String(d.status || '').toLowerCase()
-    if (st === 'done') {
+    if (st === 'done' || st === 'complete' || st === 'completed') {
       setStatus('completed')
       setShowPreview(true)
       ;(async () => {
