@@ -242,33 +242,38 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
 
-      // Robust JSON parse and jobId extraction per spec
+      // Robust JSON parse and jobId extraction per proxy-unwrapping spec
       const rawText = await startResp.text().catch(() => '')
       let data: any
       try {
         data = rawText ? JSON.parse(rawText) : {}
       } catch {
-        throw new Error(`Invalid JSON from backend: ${rawText}`)
+        throw new Error(`Invalid JSON from /api/jobs: ${rawText}`)
       }
 
-      console.log("[jobs] full response:", data)
+      // If this is our Next.js proxy wrapper, unwrap to the real backend body
+      const unwrapped = data?.body ?? data
+
+      console.log('[jobs] raw:', data)
+      console.log('[jobs] unwrapped:', unwrapped)
 
       const jobId =
+        unwrapped?.jobId ||
+        unwrapped?.job?.id ||
+        unwrapped?.id ||
+        unwrapped?.job_id ||
         data?.jobId ||
-        data?.job?.id ||
-        data?.id ||
-        data?.job_id
+        data?.body?.jobId
 
       if (!jobId) {
         throw new Error(
-          "Backend did not return jobId. Full response: " +
-            JSON.stringify(data)
+          'Backend did not return jobId. Full response: ' + JSON.stringify(data)
         )
       }
 
-      // Immediately record job id and queued status
+      // IMPORTANT: do NOT treat wrapper as failure if jobId exists
       setJobId(jobId)
-      setStatus("queued")
+      setStatus('queued')
 
       try { localStorage.setItem('ae:lastJobId', jobId) } catch (_) {}
       jobStartRef.current = Date.now()

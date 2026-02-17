@@ -45,33 +45,39 @@ export default function EditorClientV2Modern({ compact }: Props) {
         throw new Error(`Job creation failed: ${res.status}`)
       }
 
-      // Robust JSON parse and jobId extraction per spec
+      // Robust JSON parse and jobId extraction per proxy-unwrapping spec
       const rawText = await res.text().catch(() => '')
       let data: any
       try {
         data = rawText ? JSON.parse(rawText) : {}
       } catch {
-        throw new Error(`Invalid JSON from backend: ${rawText}`)
+        throw new Error(`Invalid JSON from /api/jobs: ${rawText}`)
       }
 
-      console.log("[jobs] full response:", data)
+      // If this is our Next.js proxy wrapper, unwrap to the real backend body
+      const unwrapped = data?.body ?? data
+
+      console.log('[jobs] raw:', data)
+      console.log('[jobs] unwrapped:', unwrapped)
 
       const jobId =
+        unwrapped?.jobId ||
+        unwrapped?.job?.id ||
+        unwrapped?.id ||
+        unwrapped?.job_id ||
         data?.jobId ||
-        data?.job?.id ||
-        data?.id ||
-        data?.job_id
+        data?.body?.jobId
 
       if (!jobId) {
         throw new Error(
-          "Backend did not return jobId. Full response: " + JSON.stringify(data)
+          'Backend did not return jobId. Full response: ' + JSON.stringify(data)
         )
       }
 
-      // Immediately set job id (Modern component does not have a status state)
+      // IMPORTANT: do NOT treat wrapper as failure if jobId exists
       setJobId(jobId)
       // preserve existing behavior: record resultUrl if present
-      if (data?.resultUrl) setJobUrl(data.resultUrl)
+      if (unwrapped?.resultUrl) setJobUrl(unwrapped.resultUrl)
       setUploading(false)
     } catch (e: any) {
       setUploading(false)
