@@ -25,7 +25,7 @@ import { apiUrl } from '@/lib/apiBase'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 
-type Status = 'idle' | 'uploading' | 'analyzing' | 'hook' | 'cutting' | 'pacing' | 'rendering' | 'uploading_result' | 'done' | 'error'
+type Status = 'idle' | 'uploading' | 'processing' | 'analyzing' | 'hook' | 'cutting' | 'pacing' | 'rendering' | 'uploading_result' | 'completed' | 'done' | 'error'
 
 type BackendStatus = 'queued' | 'analyzing' | 'hook' | 'cutting' | 'pacing' | 'rendering' | 'uploading' | 'done' | 'error'
 
@@ -192,13 +192,18 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       setErrorMessage('Waiting for auth')
       return
     }
-    // Ensure user is signed in before starting upload
-    const uid = user?.id || auth.currentUser?.uid || null
+    // Ensure user is signed in before starting upload. In dev, allow a fallback uid.
+    let uid = user?.id || auth.currentUser?.uid || null
     if (!uid) {
-      setErrorMessage('Please sign in')
-      setIsUploading(false)
-      setStatus('idle')
-      return
+      if (process.env.NODE_ENV === 'development') {
+        try { console.warn('[pipeline] no authenticated user — using dev fallback uid') } catch (_) {}
+        uid = 'dev-user'
+      } else {
+        setErrorMessage('Please sign in')
+        setIsUploading(false)
+        setStatus('idle')
+        return
+      }
     }
     setIsUploading(true)
     setStatus('uploading')
@@ -236,20 +241,33 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         try { console.error('JOB CREATE ERROR:', startResp.status, txt) } catch (_) {}
         throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
-      const data: any = await startResp.json().catch(() => ({}))
-
-      const jidFromBackend: string | undefined = data.jobId || data.id || data.job?.id
-
-      if (!jidFromBackend) {
-        try { console.error('Unexpected job response:', data) } catch (_) {}
-        throw new Error('Backend did not return jobId')
+      // Robustly read response body and attempt JSON parse; log raw text if parse fails
+      const text = await startResp.text().catch(() => '')
+      let data: any = {}
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch (e) {
+        try { console.log('[jobs] create response text (non-json):', text) } catch (_) {}
+        data = { _rawText: text }
       }
 
-      setJobId(jidFromBackend)
-      try { localStorage.setItem('ae:lastJobId', jidFromBackend) } catch (_) {}
+      try { console.log('[jobs] /jobs create response', { status: startResp.status, body: data }) } catch (_) {}
+
+      const jobIdFromBackend: string | undefined = data?.jobId || data?.id || data?.job?.id
+
+      if (!jobIdFromBackend) {
+        try { console.error('Unexpected job response:', data) } catch (_) {}
+        let jsonStr = ''
+        try { jsonStr = JSON.stringify(data) } catch (_) { jsonStr = String(data) }
+        throw new Error(`Backend did not return jobId. Response: ${jsonStr}`)
+      }
+
+      setJobId(jobIdFromBackend)
+      try { localStorage.setItem('ae:lastJobId', jobIdFromBackend) } catch (_) {}
       jobStartRef.current = Date.now()
-      setStatus('analyzing')
-      startPollingJob(jidFromBackend)
+      // initial status — queued -> processing in UI
+      setStatus('processing')
+      startPollingJob(jobIdFromBackend)
     } catch (e: any) {
       setErrorMessage(e?.message || 'Upload failed')
       setStatus('error')
@@ -326,9 +344,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             } else {
               setOverallProgress(1)
               setOverallEtaSec(0)
-              setStatus('done')
+              setStatus('completed')
               if (resultUrl) {
-                setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'done', result: { videoUrl: resultUrl } }))
+                setJobResp((prev) => ({ ...(prev || {}), status: job.status || 'completed', result: { videoUrl: resultUrl } }))
                 setShowPreview(true)
                 setPreviewUrl(resultUrl)
               }
@@ -349,16 +367,19 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
           // Map backend states to UI states (lowercase-comparison)
           const map: Record<string, Status> = {
-            queued: 'analyzing',
+            queued: 'processing',
+            processing: 'processing',
             analyzing: 'analyzing',
             hook: 'hook',
             cutting: 'cutting',
             pacing: 'pacing',
             rendering: 'rendering',
             uploading: 'uploading_result',
+            done: 'completed',
+            complete: 'completed',
             error: 'error',
           }
-          setStatus(map[state] || 'analyzing')
+          setStatus(map[state] || 'processing')
         }
       } catch (e: any) {
         console.warn('[poll] fetch error', e)
@@ -436,7 +457,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     }
     const st = String(d.status || '').toLowerCase()
     if (st === 'done') {
-      setStatus('done')
+      setStatus('completed')
       setShowPreview(true)
       ;(async () => {
         try {
@@ -522,7 +543,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       }
     } catch (e) {}
 
-    if (status === 'done' && jobId) {
+    if ((status === 'done' || status === 'completed') && jobId) {
       setShowPreview(true);
     }
   }, [status, jobId])
@@ -631,7 +652,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={handleUploadButtonClick} disabled={isUploading || (status !== 'idle' && status !== 'done')} className={`px-5 py-2 rounded-full font-semibold transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white hover:-translate-y-0.5 shadow-lg'}`}>
-                    {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Start New Edit' : 'Start Edit')}
+                    {isUploading ? 'Uploading…' : ((status === 'done' || status === 'completed') && jobResp?.result?.videoUrl ? 'Start New Edit' : 'Start Edit')}
                   </button>
                 </div>
               </div>
@@ -730,7 +751,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             <div className="text-sm text-white/80">{selectedFile ? selectedFile.name : 'Ready to upload'}</div>
             <div>
               <button onClick={handleUploadButtonClick} disabled={isUploading || (status !== 'idle' && status !== 'done')} className={`px-5 py-2 rounded-full font-semibold transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white shadow-lg'}`}>
-                {isUploading ? 'Uploading…' : (status === 'done' && jobResp?.result?.videoUrl ? 'Start New' : 'Start Edit')}
+                {isUploading ? 'Uploading…' : ((status === 'done' || status === 'completed') && jobResp?.result?.videoUrl ? 'Start New' : 'Start Edit')}
               </button>
             </div>
           </div>

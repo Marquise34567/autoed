@@ -25,6 +25,14 @@ export async function uploadVideoToStorage(
   }
 
   if (!isFirebaseConfigured() || !auth || !storage) {
+    // In development, allow a local fallback so the editor UI can be exercised
+    if (process.env.NODE_ENV === 'development') {
+      try { console.warn('[storage-upload] Firebase not configured — using dev fallback storagePath') } catch (_) {}
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `dev-uploads/${Date.now()}-${safeName}`
+      try { if (onProgress) onProgress(100, file.size, file.size) } catch (_) {}
+      return { storagePath: path }
+    }
     throw new Error('Firebase is not configured in the browser. Set NEXT_PUBLIC_FIREBASE_* env vars.')
   }
 

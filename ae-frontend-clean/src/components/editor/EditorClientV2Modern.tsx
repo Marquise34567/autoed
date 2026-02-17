@@ -45,14 +45,25 @@ export default function EditorClientV2Modern({ compact }: Props) {
         throw new Error(`Job creation failed: ${res.status}`)
       }
 
-      const data = await res.json()
-      console.log('JOB RESPONSE:', data)
+      // Robust parse and logging
+      const text = await res.text().catch(() => '')
+      let data: any = {}
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch (e) {
+        try { console.log('[jobs] create response text (non-json):', text) } catch (_) {}
+        data = { _rawText: text }
+      }
 
-      const newJobId = data.jobId || data.id || data.job?.id || data.jobID
+      try { console.log('JOB RESPONSE:', data) } catch (_) {}
+
+      const newJobId = data?.jobId || data?.id || data?.job?.id
 
       if (!newJobId) {
-        console.error('Unexpected job response:', data)
-        throw new Error('Backend did not return jobId')
+        try { console.error('Unexpected job response:', data) } catch (_) {}
+        let jsonStr = ''
+        try { jsonStr = JSON.stringify(data) } catch (_) { jsonStr = String(data) }
+        throw new Error(`Backend did not return jobId. Response: ${jsonStr}`)
       }
 
       setJobId(newJobId)

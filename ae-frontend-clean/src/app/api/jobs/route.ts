@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
 function backend() {
-  let raw = (process.env.BACKEND_URL || "").trim();
-  if (!raw) throw new Error("BACKEND_URL missing in env");
+  // Prefer explicit server env, then public env (for Next dev), then fallback to production host
+  let raw = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "").trim();
+  if (!raw) {
+    // Fallback to known production backend so local dev still works without env vars
+    raw = "https://autoed-backend-production-70dd.up.railway.app";
+  }
 
   raw = raw.replace(/\/+$/, "");
   if (!raw.startsWith("http://") && !raw.startsWith("https://")) {

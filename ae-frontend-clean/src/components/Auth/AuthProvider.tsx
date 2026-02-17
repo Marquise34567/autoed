@@ -21,13 +21,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isFirebaseConfigured() || !auth) {
       setAuthReady(true)
-      if (!isFirebaseConfigured()) console.error('[AuthProvider] Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.')
-      else if (process.env.NODE_ENV !== 'production') console.warn('[AuthProvider] Firebase auth not initialized')
+      if (!isFirebaseConfigured()) {
+        // eslint-disable-next-line no-console
+        console.error('[AuthProvider] Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.')
+      } else if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.warn('[AuthProvider] Firebase auth not initialized')
+      }
       return
     }
 
     const unsub = onAuthStateChanged(auth as any, (u: FirebaseUser | null) => {
-      if (process.env.NODE_ENV !== 'production') console.debug('[AuthProvider] onAuthStateChanged ->', u ? u.uid : null)
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('[AuthProvider] onAuthStateChanged ->', u ? u.uid : null)
+      }
       if (u) setUser({ id: u.uid, email: u.email ?? undefined })
       else setUser(null)
       setAuthReady(true)
