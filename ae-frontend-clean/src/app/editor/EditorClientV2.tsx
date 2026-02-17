@@ -315,6 +315,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   }
 
   const loggedJobsRef = useRef<Record<string, boolean>>({})
+  const missingResultRetriesRef = useRef<Record<string, number>>({})
 
   const startPollingJob = (jid: string) => {
     if (!jid) return
@@ -393,9 +394,20 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
           // Terminal handling: completed/failed
           if (state === 'done' || state === 'complete' || state === 'completed') {
-            // If result URL or final path not present yet, keep polling until it appears
+            // If result URL/final path not present, retry a few times then stop (old job)
             if (!resultUrl && !finalVideoPath) {
-              console.log('[poll] completed but missing result URL — continuing to poll', { jobId: jid })
+              const prev = missingResultRetriesRef.current[jid] || 0
+              missingResultRetriesRef.current[jid] = prev + 1
+              console.log('[poll] completed but missing result URL — retry', { jobId: jid, attempt: missingResultRetriesRef.current[jid] })
+              if (missingResultRetriesRef.current[jid] >= 3) {
+                // Stop polling and show warning — likely an old job without downloadable result
+                setStatus('completed')
+                setErrorMessage('Completed but no download link (old job)')
+                console.log('[poll] stopping poll after retries for missing resultUrl', { jobId: jid })
+                cancelled = true
+                return
+              }
+              // allow normal polling to continue for a few more attempts
             } else {
               setOverallProgress(1)
               setOverallEtaSec(0)
@@ -589,13 +601,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
       if (stored) setLastCelebratedJobId(stored)
     } catch (e) {}
 
-    // On mount, restore last job id if present and resume polling
+    // On mount, restore last job id if present but DO NOT auto-start polling.
     try {
       const last = typeof window !== 'undefined' ? localStorage.getItem('ae:lastJobId') : null
       if (last && !jobId) {
         setJobId(last)
-        // resume polling for restored job id
-        startPollingJob(last)
+        // Important: do NOT resume polling automatically. User must click View or Start Edit.
       }
     } catch (e) {}
 
@@ -788,7 +799,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
               <div className="text-lg font-semibold">Last jobs</div>
             </div>
           </div>
-          <JobsTable onView={(id)=>{ router.push(`/jobs/${id}`) }} onDownload={(id)=>handleDownload(id)} />
+          <JobsTable onView={(id)=>{ try { setJobId(id); startPollingJob(id) } catch(_) { router.push(`/jobs/${id}`) } }} onDownload={(id)=>handleDownload(id)} />
         </Card>
       </div>
     </div>
