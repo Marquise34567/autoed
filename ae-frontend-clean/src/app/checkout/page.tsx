@@ -12,6 +12,7 @@ import { PLANS, type PlanId } from '@/config/plans';
 import { validateReturnTo } from '@/lib/client/returnTo';
 import { API_BASE } from '@/lib/api'
 import { apiUrl } from '@/lib/apiBase'
+import { apiFetch } from '@/lib/client/apiClient'
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -87,8 +88,8 @@ function CheckoutContent() {
       )}
       {/* Background gradient blurs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-[-20%] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-[120px]" />
-        <div className="absolute right-[-10%] top-[20%] h-[360px] w-[360px] rounded-full bg-cyan-500/20 blur-[120px]" />
+        <div className="absolute left-1/2 top-[-20%] h-130 w-130 -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-[120px]" />
+        <div className="absolute right-[-10%] top-[20%] h-90 w-90 rounded-full bg-cyan-500/20 blur-[120px]" />
       </div>
 
       {/* Header */}

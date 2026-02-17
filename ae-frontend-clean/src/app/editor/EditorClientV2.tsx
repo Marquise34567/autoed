@@ -65,7 +65,7 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                       <div className="font-medium text-white/90">{userDoc?.rendersUsed ?? 0}/{userDoc?.rendersLimit ?? 12}</div>
                     </div>
                     <div className="mt-3">
-                      <button className="w-full rounded-full px-4 py-2 bg-gradient-to-br from-pink-500 via-violet-600 to-cyan-400 text-white font-semibold hover:scale-[1.02] transition">Upgrade</button>
+                      <button className="w-full rounded-full px-4 py-2 bg-linear-to-br from-pink-500 via-violet-600 to-cyan-400 text-white font-semibold hover:scale-[1.02] transition">Upgrade</button>
                       <button className="w-full mt-2 rounded-full px-4 py-2 border border-white/6 text-white/80">See pricing</button>
                     </div>
                   </div>

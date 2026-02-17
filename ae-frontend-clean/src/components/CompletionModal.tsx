@@ -62,7 +62,7 @@ export default function CompletionModal({ isOpen, jobId, previewUrl, downloadSta
               <div className="shrink-0 flex items-center space-x-3">
                 <button
                   onClick={onDownload}
-                  className="bg-gradient-to-r from-pink-500 to-yellow-400 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:scale-[1.01] transition-transform"
+                  className="bg-linear-to-r from-pink-500 to-yellow-400 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:scale-[1.01] transition-transform"
                 >
                   Download ✨
                 </button>

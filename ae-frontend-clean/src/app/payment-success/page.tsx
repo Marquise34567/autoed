@@ -70,7 +70,7 @@ export default function PaymentSuccessPage() {
         </div>
 
         <div className="relative z-10 rounded-2xl sm:rounded-3xl border border-white/10 bg-linear-to-b from-white/5 to-white/0 p-8 sm:p-12 backdrop-blur text-center">
-          <div className="mx-auto w-28 h-28 rounded-full bg-gradient-to-br from-purple-500 to-blue-400 flex items-center justify-center shadow-lg mb-6 animate-pulse">
+          <div className="mx-auto w-28 h-28 rounded-full bg-linear-to-br from-purple-500 to-blue-400 flex items-center justify-center shadow-lg mb-6 animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12 text-white"><path fill="currentColor" d="M12 2l2.9 6.3L21 9l-5 3.8L17.8 19 12 15.9 6.2 19 7 12.8 2 9l6.1-0.7L12 2z"/></svg>
           </div>
 

@@ -14,7 +14,7 @@ export default function PremiumLoader({ status, progress }: { status?: string; p
       <div className="w-full max-w-xs">
         <div className="text-xs text-white/60 text-center mb-1">{active ? `${pct}%` : ''}</div>
         <div className="w-full bg-white/6 rounded-full h-2 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-[#7c3aed] to-[#06b6d4] transition-all" style={{ width: `${pct}%` }} />
+          <div className="h-full bg-linear-to-r from-[#7c3aed] to-[#06b6d4] transition-all" style={{ width: `${pct}%` }} />
         </div>
       </div>
     </div>

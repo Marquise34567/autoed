@@ -52,7 +52,7 @@ export default function SubscriptionCard({ user }:{ user: any }){
   }
 
   return (
-    <div className="w-full h-full relative rounded-2xl p-6 sm:p-6 bg-gradient-to-br from-[#04050a] via-[#071018] to-[#07101a] border border-white/6 shadow-[0_30px_60px_rgba(3,6,23,0.7)] backdrop-blur-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1">
+    <div className="w-full h-full relative rounded-2xl p-6 sm:p-6 bg-linear-to-br from-[#04050a] via-[#071018] to-[#07101a] border border-white/6 shadow-[0_30px_60px_rgba(3,6,23,0.7)] backdrop-blur-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       {/* Plan badge */}
       <div className="absolute -top-4 -left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white shadow-md" style={{background: plan !== 'free' ? 'linear-gradient(90deg,#7c3aed,#06b6d4)' : 'rgba(255,255,255,0.06)'}}>
         {plan !== 'free' ? (
@@ -103,7 +103,7 @@ export default function SubscriptionCard({ user }:{ user: any }){
       <ul className="mt-3 text-sm text-white/70 grid grid-cols-1 gap-2">
         {features.slice(0,4).map((f:string)=> (
           <li key={f} className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-[#7c3aed] to-[#06b6d4] text-white text-xs shadow">✓</span>
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-linear-to-br from-[#7c3aed] to-[#06b6d4] text-white text-xs shadow">✓</span>
             <span>{f}</span>
           </li>
         ))}
@@ -112,11 +112,11 @@ export default function SubscriptionCard({ user }:{ user: any }){
       <div className="mt-6 grid grid-cols-2 gap-3">
         {plan === 'free' ? (
           <>
-            <button
+              <button
               type="button"
               onClick={handleStartTrial}
               disabled={trialLoading}
-              className="col-span-2 inline-flex items-center justify-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#06b6d4] text-white text-sm font-semibold shadow-[0_20px_50px_rgba(99,102,241,0.12)] hover:-translate-y-px transition-transform disabled:opacity-60"
+              className="col-span-2 inline-flex items-center justify-center gap-3 px-5 py-3 rounded-2xl bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white text-sm font-semibold shadow-[0_20px_50px_rgba(99,102,241,0.12)] hover:-translate-y-px transition-transform disabled:opacity-60"
             >
                 {trialLoading ? 'Opening pricing…' : 'Start 7‑day free trial'}
             </button>
@@ -125,7 +125,7 @@ export default function SubscriptionCard({ user }:{ user: any }){
         ) : (
         <form className="relative" action="/api/manage-billing" method="post">
             <input type="hidden" name="uid" value={user?.uid ?? ''} />
-            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#06b6d4] text-white font-semibold shadow-[0_12px_40px_rgba(99,102,241,0.12)]">Manage billing</button>
+            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-linear-to-r from-[#7c3aed] to-[#06b6d4] text-white font-semibold shadow-[0_12px_40px_rgba(99,102,241,0.12)]">Manage billing</button>
         </form>
         )}
       </div>

@@ -114,8 +114,8 @@ export default function EditorGate() {
   return (
     <div className="min-h-screen bg-[#07090f] text-white overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 -translate-x-1/2 -top-20 w-[520px] h-[520px] rounded-full bg-fuchsia-500/20 blur-[120px]" />
-        <div className="absolute right-[-80px] top-[20%] w-[360px] h-[360px] rounded-full bg-cyan-500/20 blur-[120px]" style={{ animationDelay: '1.2s' }} />
+        <div className="absolute left-1/2 -translate-x-1/2 -top-20 w-130 h-130 rounded-full bg-fuchsia-500/20 blur-[120px]" />
+        <div className="absolute -right-20 top-[20%] w-90 h-90 rounded-full bg-cyan-500/20 blur-[120px]" style={{ animationDelay: '1.2s' }} />
       </div>
 
       <header className="relative z-10 flex items-center justify-between px-4 sm:px-6 lg:px-16 py-4 sm:py-6">

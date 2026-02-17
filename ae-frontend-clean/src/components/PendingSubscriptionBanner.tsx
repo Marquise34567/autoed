@@ -54,7 +54,7 @@ export function PendingSubscriptionBanner() {
     <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600/95 backdrop-blur-sm border-b border-amber-400/30">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <svg 
               className="w-5 h-5 text-white animate-pulse" 
               fill="none" 
