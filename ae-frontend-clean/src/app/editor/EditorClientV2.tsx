@@ -72,9 +72,12 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
                       <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
                     </div>
                   </div>
-                )
-              }
-                      </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
                       <div className="flex items-center gap-2">
                         <button onClick={()=>{ try { navigator.clipboard.writeText(String(errorMessage)) } catch(_){} }} className="px-3 py-1 rounded-full bg-white/6">Copy</button>
                         <button onClick={()=>{ reset() }} className="px-3 py-1 rounded-full bg-white/6">Try again</button>
