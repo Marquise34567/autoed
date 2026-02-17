@@ -82,6 +82,26 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
   const [smartZoom, setSmartZoom] = useState<boolean>(true)
   const [completionOpen, setCompletionOpen] = useState(false)
   const [lastCelebratedJobId, setLastCelebratedJobId] = useState<string | null>(null)
+  const _progressLoggedRef = useRef<Record<string, boolean>>({})
+
+  const normalizeProgress = (p: any, jobStatus?: string, jid?: string) => {
+    if (jobStatus === 'completed') {
+      if (jid && !_progressLoggedRef.current[jid]) {
+        try { console.debug('[progress]', { raw: p, normalized: 100 }) } catch (_) {}
+        _progressLoggedRef.current[jid] = true
+      }
+      return 100
+    }
+    const n = Number(p)
+    if (!Number.isFinite(n)) return 0
+    const val = n <= 1 ? n * 100 : n
+    const pct = Math.max(0, Math.min(100, Math.round(val)))
+    if (jid && !_progressLoggedRef.current[jid]) {
+      try { console.debug('[progress]', { raw: p, normalized: pct }) } catch (_) {}
+      _progressLoggedRef.current[jid] = true
+    }
+    return pct
+  }
 
   const handleModalClose = () => {
     setCompletionOpen(false)
@@ -693,9 +713,9 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
 
           <div className="mt-4">
             <div className="mb-4">
-              <ProgressBar value={(jobResp?.progress ?? overallProgress) as any} />
+              <ProgressBar value={normalizeProgress(jobResp?.progress ?? overallProgress, (jobResp as any)?.status || status, jobId)} />
               <div className="flex items-center justify-between text-xs text-white/60 mt-2">
-                <div>{Math.round(((jobResp?.progress ?? overallProgress) || 0) * 100)}%</div>
+                <div>{normalizeProgress(jobResp?.progress ?? overallProgress, (jobResp as any)?.status || status, jobId)}%</div>
                 <div>{overallEtaSec ? `${overallEtaSec}s remaining` : ''}</div>
               </div>
             </div>
