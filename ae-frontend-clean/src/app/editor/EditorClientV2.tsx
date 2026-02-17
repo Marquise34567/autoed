@@ -46,146 +46,168 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         <div className="text-center">
           <div className="text-sm text-yellow-300">Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* env vars in Vercel.</div>
         </div>
-      </div>
-    )
-  }
-  const { user, authReady } = useAuth()
-  const router = useRouter()
-  // moved navigator access into an effect to avoid module-scope window access
-  useEffect(() => {
-    try { console.log('Navigator online:', navigator.onLine) } catch (_) {}
-  }, [])
-  
-  const [userDoc, setUserDoc] = useState<any | null>(null)
-  const [popup, setPopup] = useState<{ title: string; lines: string[] } | null>(null)
-  const [status, setStatus] = useState<Status>('idle')
-  const [overallProgress, setOverallProgress] = useState<number>(0)
-  const [overallEtaSec, setOverallEtaSec] = useState<number>(0)
-  const [detectedDurationSec, setDetectedDurationSec] = useState<number | null>(null)
-  const [clips, setClips] = useState<Array<any>>([])
-  const [errorMessage, setErrorMessage] = useState<string | undefined>()
-  const [jobId, setJobId] = useState<string | undefined>()
-  const esRef = useRef<EventSource | null>(null)
-  const isTerminalRef = useRef<boolean>(false)
-  const startedRef = useRef<boolean>(false)
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>()
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewError, setPreviewError] = useState<string | undefined>()
-  const [showPreview, setShowPreview] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const pollRef = useRef<number | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [originalUrl, setOriginalUrl] = useState<string | null>(null)
-  const [jobResp, setJobResp] = useState<JobResponse | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const jobStartRef = useRef<number | null>(null)
-  const [smartZoom, setSmartZoom] = useState<boolean>(true)
-  const [completionOpen, setCompletionOpen] = useState(false)
-  const [lastCelebratedJobId, setLastCelebratedJobId] = useState<string | null>(null)
-  const _progressLoggedRef = useRef<Record<string, boolean>>({})
+          <div className="w-full max-w-6xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <img src="/favicon.svg" className="h-9 w-9" alt="AutoEditor" />
+                <div>
+                  <div className="text-2xl font-extrabold tracking-tight">AutoEditor</div>
+                  <div className="text-sm text-white/60">Creator-grade AI Video Editor</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button className="rounded-full px-4 py-2 bg-gradient-to-br from-pink-500 via-violet-600 to-cyan-400 text-white text-sm font-semibold shadow-[0_10px_30px_rgba(124,58,237,0.18)] hover:scale-[1.02] transition-transform focus:outline-none focus:ring-2 focus:ring-white/20">Upgrade</button>
+                <div className="h-9 w-9 rounded-full bg-white/8 flex items-center justify-center text-sm font-medium">U</div>
+              </div>
+            </div>
 
-  const normalizeProgress = (p: any, jobStatus?: string, jid?: string) => {
-    if (jobStatus === 'completed') {
-      if (jid && !_progressLoggedRef.current[jid]) {
-        try { console.debug('[progress]', { raw: p, normalized: 100 }) } catch (_) {}
-        _progressLoggedRef.current[jid] = true
-      }
-      return 100
-    }
-    const n = Number(p)
-    if (!Number.isFinite(n)) return 0
-    const val = n <= 1 ? n * 100 : n
-    const pct = Math.max(0, Math.min(100, Math.round(val)))
-    if (jid && !_progressLoggedRef.current[jid]) {
-      try { console.debug('[progress]', { raw: p, normalized: pct }) } catch (_) {}
-      _progressLoggedRef.current[jid] = true
-    }
-    return pct
-  }
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              {/* Left: Upload & Start (creator-style card) */}
+              <Card className="md:col-span-5 p-6 relative overflow-hidden">
+                <div className="absolute -left-24 -top-24 w-56 h-56 rounded-full bg-pink-500/6 blur-3xl pointer-events-none" />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-sm text-white/60">Create Edit</div>
+                    <div className="text-2xl font-bold">Upload & Start</div>
+                  </div>
+                  <div className="text-xs text-white/50">MP4 • MOV • WEBM</div>
+                </div>
 
-  const handleModalClose = () => {
-    setCompletionOpen(false)
-  }
+                <div className="mt-6">
+                  <div
+                    onClick={openFilePicker}
+                    role="button"
+                    tabIndex={0}
+                    className="w-full rounded-2xl border-2 border-dashed border-white/8 p-8 flex flex-col items-center justify-center text-center hover:shadow-[0_18px_60px_rgba(96,33,224,0.12)] transition cursor-pointer bg-gradient-to-b from-white/3 to-transparent"
+                  >
+                    <input
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
+                      hidden
+                      ref={fileInputRef}
+                      onChange={handleFileSelected}
+                    />
+                    <div className="text-white/90 font-semibold flex items-center gap-3">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10l5-5 5 5" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <span>Drag & drop or click to select a video</span>
+                    </div>
+                    <div className="text-xs text-white/60 mt-2">Up to 1 GB</div>
+                  </div>
 
-  const handleModalDownload = () => {
-    if (jobId) handleDownload(jobId)
-  }
+                  {selectedFile && (
+                    <div className="mt-4 flex items-center justify-between bg-[rgba(255,255,255,0.02)] p-3 rounded-lg border border-white/6">
+                      <div>
+                        <div className="font-medium">{selectedFile.name}</div>
+                        <div className="text-xs text-white/60">{Math.round(selectedFile.size/1024/1024)} MB • {selectedFile.type || 'video'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={handleUploadButtonClick} disabled={isUploading || (status !== 'idle' && status !== 'done')} className={`px-5 py-2 rounded-full font-semibold transition ${isUploading || (status !== 'idle' && status !== 'done') ? 'bg-white/10 text-white/60 cursor-not-allowed' : 'bg-gradient-to-br from-violet-500 to-cyan-400 text-white hover:-translate-y-0.5 shadow-[0_12px_30px_rgba(99,102,241,0.18)]'}`}>
+                          {isUploading ? 'Uploading…' : ((status === 'done' || status === 'completed') && jobResp?.result?.videoUrl ? 'Start New Edit' : 'Start Edit')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-  async function startEditorPipeline(file: File) {
-    if (!authReady) {
-      console.warn('[pipeline] auth not ready; aborting start')
-      try { setErrorMessage('Waiting for authentication; please try again') } catch (_) {}
-      return
-    }
-    // user presence will be ensured by page guard; still safe-check
-    const uid = user?.id || auth.currentUser?.uid
-    if (!uid) {
-      console.warn('[pipeline] no user available; cannot start pipeline')
-      try { setErrorMessage('Please sign in to start processing') } catch (_) {}
-      return
-    }
-    if (startedRef.current) {
-      console.warn('[pipeline] already started; skipping')
-      return
-    }
-    startedRef.current = true
-    try {
-      console.log('[pipeline] startEditorPipeline:', file.name, file.type)
-      await createJobWithFile(file)
-    } finally {
-      startedRef.current = false
-    }
-  }
+                  <div className="mt-4">
+                    <details className="text-sm text-white/70">
+                      <summary className="cursor-pointer">Advanced settings</summary>
+                      <div className="mt-3 text-xs text-white/60">
+                        <label className="flex items-center gap-2"><input id="v2-smartzoom" type="checkbox" checked={smartZoom} onChange={(e)=>setSmartZoom(e.target.checked)} className="h-4 w-4" /> Smart Zoom (recommended)</label>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              </Card>
 
-  const fetchDownloadUrl = async () => {
-    if (!jobId) throw new Error('Missing jobId')
-    // Prefer the result URL from the polled job state
-    if (jobResp?.result?.videoUrl) return jobResp.result.videoUrl
-    // Fallback: query job status endpoint for the job wrapper
-    const path = `/api/jobs/${encodeURIComponent(jobId)}`
-    try { console.log('[fetchDownloadUrl] GET', path) } catch (_) {}
-    const resp = await apiFetch(path)
-    if (!resp.ok) throw new Error('Failed to fetch job')
-    const data: any = await resp.json()
-    const jobWrapper = data.job || data
-    if (!jobWrapper) throw new Error('Missing job data')
-    const url = jobWrapper.resultUrl || jobWrapper.result?.videoUrl || jobWrapper.result?.url || jobWrapper.outputUrl
-    if (!url) throw new Error('Missing result URL')
-    console.log('RESULT URL:', url)
-    return url
-  }
+              {/* Middle: Job Status (prominent) */}
+              <Card className="md:col-span-5 p-6 relative overflow-hidden">
+                <div className="absolute -right-24 -top-24 w-56 h-56 rounded-full bg-cyan-500/6 blur-3xl pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-white/60">Job Status</div>
+                    <div className="text-2xl font-bold">Live</div>
+                  </div>
+                  <StatusPill status={status} />
+                </div>
 
-  function openFilePicker() {
-    try { console.log('[upload] button clicked') } catch (_) {}
-    if (!fileInputRef.current) {
-      try { alert('Unable to open file picker — please reload the page and try.') } catch (_) {}
-      return
-    }
-    try { if (fileInputRef.current) fileInputRef.current.value = '' } catch (_) {}
-    fileInputRef.current?.click()
-  }
+                <div className="mt-5">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <ProgressBar value={normalizeProgress(jobResp?.progress ?? overallProgress, (jobResp as any)?.status || status, jobId)} />
+                      </div>
+                      <div className="text-sm text-white/60 w-20 text-right">{normalizeProgress(jobResp?.progress ?? overallProgress, (jobResp as any)?.status || status, jobId)}%</div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-white/60 mt-2">
+                      <div>{overallEtaSec ? `${overallEtaSec}s remaining` : '—'}</div>
+                      <div className="text-xs text-white/60">{detectedDurationSec ? `${Math.round(detectedDurationSec)}s` : '—'}</div>
+                    </div>
+                  </div>
 
-  // New combined handler: if a file is already selected, start upload; otherwise open picker.
-  function handleUploadButtonClick() {
-    try { console.log('[upload] button clicked (handler)') } catch (_) {}
-    if (selectedFile) {
-      try { console.log('[upload] start', { apiUrl: '/api', fileName: selectedFile.name, fileSize: selectedFile.size }) } catch (_) {}
-      createJobWithFile(selectedFile)
-      return
-    }
-    // No file yet — set UI message and open file picker
-    try { setErrorMessage('Please select a file to upload') } catch (_) {}
-    openFilePicker()
-    return
-  }
+                  <div className="mt-4 bg-white/2 p-3 rounded-lg border border-white/6">
+                    <div className="text-xs text-white/60">Current step</div>
+                    <div className="font-medium text-white/90 mt-1">{jobResp?.status || status}</div>
+                    <div className="mt-3 text-xs text-white/60">Recent steps</div>
+                    <div className="mt-2">
+                      <Timeline steps={[jobResp?.message || '', String(jobResp?.status || ''), ...(jobResp?.segments?.map((s:any)=>s.reason || `${s.start}-${s.end}`) || [])].filter(Boolean)} />
+                    </div>
+                  </div>
 
-  async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0]
-    if (!selected) {
-      try { event.currentTarget.value = '' } catch (_) {}
-      return
-    }
-    // basic validation
+                  {errorMessage && (
+                    <div className="mt-4 p-3 rounded-lg bg-red-700/12 border border-red-600/30 text-sm flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="#fb7185" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 9v4" stroke="#fb7185" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 17h.01" stroke="#fb7185" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-red-300">{errorMessage.split('\n')[0] || 'Error'}</div>
+                        <div className="text-xs text-white/60 mt-1">{errorMessage}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={()=>{ try { navigator.clipboard.writeText(String(errorMessage)) } catch(_){} }} className="px-3 py-1 rounded-full bg-white/6">Copy</button>
+                        <button onClick={()=>{ reset() }} className="px-3 py-1 rounded-full bg-white/6">Try again</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Right: Subscription card area (kept minimal here; EditorGate renders the main subscription aside) */}
+              <div className="md:col-span-2 hidden md:block">
+                <Card className="p-4 sticky top-24">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-white/60">Plan</div>
+                      <div className="font-semibold text-white/90">{userDoc?.plan || 'Free'}</div>
+                    </div>
+                    <div className="rounded-full bg-amber-400/10 text-amber-200 px-3 py-1 text-xs font-semibold">Pro</div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white/60">Renders used</div>
+                      <div className="font-medium text-white/90">{userDoc?.rendersUsed ?? 0}/{userDoc?.rendersLimit ?? 12}</div>
+                    </div>
+                    <div className="mt-3">
+                      <button className="w-full rounded-full px-4 py-2 bg-gradient-to-br from-pink-500 via-violet-600 to-cyan-400 text-white font-semibold hover:scale-[1.02] transition">Upgrade</button>
+                      <button className="w-full mt-2 rounded-full px-4 py-2 border border-white/6 text-white/80">See pricing</button>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-xs text-white/60">Signed in as <span className="font-medium text-white/90">{(user as any)?.id || (user as any)?.email || 'you'}</span></div>
+                </Card>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Card>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm text-white/60">Recent Jobs</div>
+                    <div className="text-lg font-semibold">Last jobs</div>
+                  </div>
+                </div>
+                <JobsTable onView={(id)=>{ try { setJobId(id); startPollingJob(id) } catch(_) { router.push(`/jobs/${id}`) } }} onDownload={(id)=>handleDownload(id)} />
+              </Card>
+            </div>
+          </div>
     const okType = /video\/(mp4|quicktime|x-matroska|webm)/i
     if (!okType.test(selected.type) && !/\.(mp4|mov|mkv|webm)$/i.test(selected.name)) {
       setErrorMessage('Unsupported file type — use MP4, MOV, MKV, or WEBM')

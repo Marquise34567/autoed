@@ -22,7 +22,7 @@ export default function EditorControls({
 }: EditorControlsProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="relative rounded-2xl sm:rounded-3xl border border-white/6 bg-gradient-to-br from-white/3 to-white/2 p-4 sm:p-6 shadow-lg backdrop-blur-md">
+      <div className="relative rounded-2xl sm:rounded-3xl border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-4 sm:p-6 shadow-lg backdrop-blur-md">
         <div className="absolute -top-3 right-4">
           <PremiumBadge size="sm" />
         </div>
