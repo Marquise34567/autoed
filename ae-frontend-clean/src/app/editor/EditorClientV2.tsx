@@ -323,6 +323,11 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
     const POLL_MS = 2500
     const startAt = Date.now()
     const MAX_MS = 10 * 60 * 1000 // 10 minutes
+    // Backoff settings for server errors: 20s, 40s, 60s max
+    let backoffMs = 20000
+    const BACKOFF_STEP = 20000
+    const BACKOFF_MAX = 60000
+    let inBackoff = false
 
     console.log('[poll] startPollingJob', { jobId: jid })
 
@@ -336,9 +341,28 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
             // resource not ready — continue polling
             console.log('[poll] 404, continuing', { jobId: jid })
           } else {
-            throw new Error(`status ${r.status}`)
+            // Non-2xx (server error or other) — enter backoff retry
+            try { console.warn('[poll] non-2xx response, entering backoff', { jobId: jid, status: r.status }) } catch (_) {}
+            setErrorMessage('Server unavailable — retrying...')
+            inBackoff = true
+            // schedule next retry with exponential backoff
+            const waitMs = backoffMs
+            backoffMs = Math.min(BACKOFF_MAX, backoffMs + BACKOFF_STEP)
+            if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null }
+            pollRef.current = window.setTimeout(tick, waitMs) as unknown as number
+            return
           }
         } else {
+          // successful response — clear backoff state and any server-error message
+          if (inBackoff) {
+            inBackoff = false
+            backoffMs = 20000
+          }
+          if (errorMessage === 'Server unavailable — retrying...') {
+            try { setErrorMessage(undefined) } catch (_) {}
+          }
+        }
+        if (r.ok) {
           const data: any = await r.json()
           const job: JobResponse & any = data.job || data
           if (!job) return
