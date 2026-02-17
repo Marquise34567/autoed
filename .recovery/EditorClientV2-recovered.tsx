@@ -231,9 +231,15 @@ export default function EditorClientV2({ compact }: { compact?: boolean } = {}) 
         const txt = await startResp.text().catch(()=>'')
         throw new Error(`Job create failed: ${startResp.status} ${txt}`)
       }
-      const startJson: any = await startResp.json().catch(()=>({}))
-      const jidFromBackend: string | undefined = startJson?.jobId
-      if (!jidFromBackend) throw new Error('Backend did not return jobId')
+      const data: any = await startResp.json().catch(() => ({}))
+
+      const jidFromBackend: string | undefined = data.jobId || data.id || data.job?.id
+
+      if (!jidFromBackend) {
+        try { console.error('Unexpected job response:', data) } catch (_) {}
+        throw new Error('Backend did not return jobId')
+      }
+
       setJobId(jidFromBackend)
       jobStartRef.current = Date.now()
       setStatus('analyzing')
