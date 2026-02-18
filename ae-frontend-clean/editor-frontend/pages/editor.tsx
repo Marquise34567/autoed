@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PendingSubscriptionBanner } from "@/components/PendingSubscriptionBanner";
 import EditorControls from "@/components/editor/EditorControls";
+import SubscriptionCard from "@/components/SubscriptionCard";
 import ProgressStepper from "@/components/editor/ProgressStepper";
 import UpgradeModal from "@/components/UpgradeModal";
 import CompletionModal from '@/components/CompletionModal';
@@ -216,17 +217,56 @@ export default function EditorPage() {
             </div>
             <p className="text-white/60">Build {buildId}</p>
           </div>
-          <div className="grid gap-6 sm:gap-8 lg:grid-cols-[360px_1fr]">
-            <EditorControls
-              title={title}
-              onTitleChange={setTitle}
-              onFileChange={handleFileSelected}
-              onOpenCrop={() => setShowCrop(true)}
-              settings={settings}
-              locked={analyzing}
-              onSettingsChange={(next) => setSettings(next)}
-            />
+          <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
+              <EditorControls
+                title={title}
+                onTitleChange={setTitle}
+                onFileChange={handleFileSelected}
+                onOpenCrop={() => setShowCrop(true)}
+                settings={settings}
+                locked={analyzing}
+                onSettingsChange={(next) => setSettings(next)}
+              />
+
+              <div className="relative rounded-2xl border border-white/6 bg-gradient-to-b from-white/3 to-white/2 p-5 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-semibold">Preview & Status</h2>
+                    <p className="text-sm text-white/60">Live preview and render progress</p>
+                  </div>
+                  <p className="text-sm text-white/50">{jobStatus}</p>
+                </div>
+
+                <div className="w-full rounded-md overflow-hidden bg-black/60 flex items-center justify-center h-48">
+                  {outputUrl ? (
+                    <video src={outputUrl} controls className="w-full h-full object-contain" />
+                  ) : file ? (
+                    <video src={fileUrl || URL.createObjectURL(file)} controls className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-center text-white/50">No preview available</div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className="h-2 w-full bg-white/6 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gradient-to-r from-emerald-400 to-sky-400" style={{ width: `${progressStep}%` }} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-sm text-white/60">
+                    <span>{progressStep}%</span>
+                    <div className="flex items-center gap-3">
+                      {outputUrl && (
+                        <button onClick={() => handleModalDownload(jobId || undefined)} className="px-3 py-1 rounded-full bg-emerald-500/90 text-black font-medium">Download</button>
+                      )}
+                      <button onClick={() => setShowLogs((s) => !s)} className="px-3 py-1 rounded-full bg-white/6 text-white/90">Logs</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <SubscriptionCard onOpenUpgrade={() => setShowUpgradeModal(true)} />
             </div>
           </div>
           {billingStatus && (
