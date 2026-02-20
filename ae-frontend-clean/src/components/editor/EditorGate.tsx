@@ -9,10 +9,14 @@ import { makeLoginUrl } from '@/lib/routes'
 import { Logo } from '@/components/Logo'
 import { BetaBadge } from '@/components/BetaBadge'
 import { MobileNav } from '@/components/MobileNav'
+  const bypassAuth = process.env.NEXT_PUBLIC_BYPASS_AUTH === '1' || process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+  const effectiveUser = user || (bypassAuth ? { id: 'dev', email: 'dev@local' } : null)
 import { UserNav } from '@/components/UserNav'
 import UpgradeModal from '@/components/UpgradeModal'
 import SubscriptionCard from '@/components/subscription/SubscriptionCard'
-import { auth, db as firestore, isFirebaseConfigured } from '@/lib/firebase.client'
+    if (!authReady && !bypassAuth) return
+
+    if (!effectiveUser) {
 import { doc } from 'firebase/firestore'
 import { getOrCreateUserDoc } from '@/lib/safeUserDoc'
 import { isPremium } from '@/lib/subscription'
@@ -28,9 +32,9 @@ export default function EditorGate() {
     )
   }
   const { user, authReady } = useAuth()
-  const router = useRouter()
-  const [userDoc, setUserDoc] = useState<any | null>(null)
-  const [showUpgrade, setShowUpgrade] = useState(false)
+          {process.env.NODE_ENV === 'development' && (
+            <pre className="mt-3 text-xs text-white/60">{`authReady: ${String(authReady)}\nuser: ${user?.id ?? 'null'}\n(bypassAuth: ${String(bypassAuth)})\nurl: ${typeof window !== 'undefined' ? window.location.href : ''}`}</pre>
+          )}
 
   // TEMP debug: show who is causing redirects
   useEffect(() => {
@@ -38,9 +42,9 @@ export default function EditorGate() {
       // eslint-disable-next-line no-console
       console.log('[auth]', { authReady, uid: user?.id, path: typeof window !== 'undefined' ? window.location.pathname : '' })
     } catch (_) {}
-  }, [authReady, user])
-
-  useEffect(() => {
+          {process.env.NODE_ENV === 'development' && (
+            <pre className="mt-3 text-xs text-white/60">{`authReady: ${String(authReady)}\nuser: ${user?.id ?? 'null'}\n(bypassAuth: ${String(bypassAuth)})\nurl: ${typeof window !== 'undefined' ? window.location.href : ''}`}</pre>
+          )}
     if (!authReady) return
 
     if (!user) {
