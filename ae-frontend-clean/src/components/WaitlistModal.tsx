@@ -43,9 +43,9 @@ export default function WaitlistModal({ open, onClose, initialSuccess }: { open:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-gradient-to-br from-black/80 to-black/70 backdrop-blur-lg" />
+      <div className="absolute inset-0 bg-linear-to-br from-black/80 to-black/70 backdrop-blur-lg" />
       <div className="relative z-10 max-w-xl w-full mx-4">
-        <div className="bg-gradient-to-b from-white/6 to-white/4 border border-white/8 rounded-3xl p-8 shadow-[0_20px_60px_rgba(2,6,23,0.7)]">
+        <div className="bg-linear-to-b from-white/6 to-white/4 border border-white/8 rounded-3xl p-8 shadow-[0_20px_60px_rgba(2,6,23,0.7)]">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-white/6 p-2">
               <Logo />
@@ -73,7 +73,7 @@ export default function WaitlistModal({ open, onClose, initialSuccess }: { open:
                 <button
                   onClick={submit}
                   disabled={loading}
-                  className="flex-1 rounded-full px-5 py-3 bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-lg hover:scale-[1.01] transition-transform disabled:opacity-60"
+                  className="flex-1 rounded-full px-5 py-3 bg-linear-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-lg hover:scale-[1.01] transition-transform disabled:opacity-60"
                 >
                   {loading ? "Joining..." : "Join Waitlist — Notify Me"}
                 </button>

@@ -229,7 +229,7 @@ export default function EditorPage() {
                 onSettingsChange={(next) => setSettings(next)}
               />
 
-              <div className="relative rounded-2xl border border-white/6 bg-gradient-to-b from-white/3 to-white/2 p-5 shadow-2xl">
+              <div className="relative rounded-2xl border border-white/6 bg-linear-to-b from-white/3 to-white/2 p-5 shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-lg sm:text-xl font-semibold">Preview & Status</h2>
@@ -250,7 +250,7 @@ export default function EditorPage() {
 
                 <div className="mt-4">
                   <div className="h-2 w-full bg-white/6 rounded-full overflow-hidden">
-                    <div className="h-2 bg-gradient-to-r from-emerald-400 to-sky-400" style={{ width: `${progressStep}%` }} />
+                    <div className="h-2 bg-linear-to-r from-emerald-400 to-sky-400" style={{ width: `${progressStep}%` }} />
                   </div>
                   <div className="mt-2 flex items-center justify-between text-sm text-white/60">
                     <span>{progressStep}%</span>

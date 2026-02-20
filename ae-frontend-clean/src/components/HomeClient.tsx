@@ -36,7 +36,7 @@ export default function HomeClient() {
           {!authReady || !user ? (
             <>
               <button onClick={()=>{ setShowAuthModal(true); setAuthMode('login') }} className="rounded-full border border-white/20 px-4 py-2 text-white/80 transition hover:border-white/40 hover:text-white">Sign in</button>
-              <button onClick={()=>{ setShowAuthModal(true); setAuthMode('signup') }} className="rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold px-4 py-2">Sign up</button>
+              <button onClick={()=>{ setShowAuthModal(true); setAuthMode('signup') }} className="rounded-full bg-linear-to-r from-pink-500 to-yellow-400 text-black font-semibold px-4 py-2">Sign up</button>
             </>
           ) : null}
           <MobileNav>
@@ -50,7 +50,7 @@ export default function HomeClient() {
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/70">
             Premium AI Auto-Editor
           </div>
-          <h1 className="mt-6 sm:mt-8 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-slate-200/80 px-2">
+          <h1 className="mt-6 sm:mt-8 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white/95 to-slate-200/80 px-2">
             We Built an Editor That Thinks Like Top Creators.
           </h1>
           <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg text-white/70 px-4">
@@ -67,7 +67,7 @@ export default function HomeClient() {
             </div>
             <button
               onClick={() => setShowWaitlist(true)}
-              className="rounded-full px-4 py-2 bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-md hover:brightness-105 transition"
+              className="rounded-full px-4 py-2 bg-linear-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-md hover:brightness-105 transition"
             >
               Join Waitlist
             </button>

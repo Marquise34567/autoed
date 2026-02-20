@@ -33,8 +33,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#07090f] text-white overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 -translate-x-1/2 -top-20 w-[520px] h-[520px] rounded-full bg-fuchsia-500/20 blur-[120px] animate-float" />
-        <div className="absolute right-[-80px] top-[20%] w-[360px] h-[360px] rounded-full bg-cyan-500/20 blur-[120px] animate-float" style={{ animationDelay: '1.2s' }} />
+        <div className="absolute left-1/2 -translate-x-1/2 -top-20 w-130 h-130 rounded-full bg-fuchsia-500/20 blur-[120px] animate-float" />
+        <div className="absolute -right-20 top-[20%] w-90 h-90 rounded-full bg-cyan-500/20 blur-[120px] animate-float" style={{ animationDelay: '1.2s' }} />
       </div>
 
       <header className="relative z-10 flex items-center justify-between px-4 sm:px-6 lg:px-16 py-4 sm:py-6">
@@ -62,7 +62,7 @@ export default function Home() {
       <main className="relative z-10 overflow-x-hidden">
         <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-16 text-center pt-12 pb-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-wider text-white/70">Premium AI Auto-Editor</div>
-          <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-slate-200/80 animate-fade-up fade-delay-1">We Built an Editor That Thinks Like Top Creators.</h1>
+          <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white/95 to-slate-200/80 animate-fade-up fade-delay-1">We Built an Editor That Thinks Like Top Creators.</h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-white/70 animate-fade-up fade-delay-2">AutoEditor analyzes your footage, identifies the best moments, selects the perfect hook, and renders creator-ready clips with studio-grade audio enhancement.</p>
           <div className="mt-6" />
 
