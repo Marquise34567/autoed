@@ -13,6 +13,7 @@
     "selftest:analyze": "node scripts/selftest-analyze.js"
   },
   "dependencies": {
+    "resend": "^1.13.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.94.1",
     "@vercel/analytics": "^1.6.1",
