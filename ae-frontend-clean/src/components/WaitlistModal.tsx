@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 
-export default function WaitlistModal({ open, onClose }: { open: boolean; onClose: (added?: boolean) => void }) {
+export default function WaitlistModal({ open, onClose, initialSuccess }: { open: boolean; onClose: (added?: boolean) => void; initialSuccess?: boolean }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState(false || initialSuccess);
   const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
@@ -29,9 +29,8 @@ export default function WaitlistModal({ open, onClose }: { open: boolean; onClos
       if (res.ok) {
         setSuccess(true);
         setEmail("");
-        setTimeout(() => {
-          onClose(true);
-        }, 900);
+        try { localStorage.setItem('waitlist:joined', '1'); } catch (e) {}
+        // Keep the modal open on the thank-you screen — do not auto-close
       } else {
         setError("Failed to join waitlist. Try again later.");
       }

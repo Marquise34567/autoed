@@ -8,8 +8,19 @@ export default function WaitlistOverlay() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Force show the overlay — nobody proceeds without joining
-    setTimeout(() => setOpen(true), 200);
+    // Force show the overlay — nobody proceeds without joining.
+    // If the user already joined, show the thank-you screen persistently.
+    try {
+      const joined = localStorage.getItem('waitlist:joined');
+      if (joined === '1') {
+        // open and show success state
+        setOpen(true);
+      } else {
+        setTimeout(() => setOpen(true), 200);
+      }
+    } catch (e) {
+      setTimeout(() => setOpen(true), 200);
+    }
   }, []);
 
   return (
@@ -18,13 +29,13 @@ export default function WaitlistOverlay() {
         <div>
           <WaitlistModal
             open={open}
+            initialSuccess={(() => { try { return localStorage.getItem('waitlist:joined') === '1' } catch(e){ return false } })()}
             onClose={(added?: boolean) => {
-              // Only close the overlay if the user actually joined (added === true)
+              // Keep overlay persistent — don't close unless we explicitly want to
               if (added) {
                 try { localStorage.setItem('waitlist:joined', '1'); } catch (e) {}
-                setOpen(false);
+                // still keep it visible on the thank-you screen
               }
-              // otherwise keep it open — users cannot bypass
             }}
           />
           {/* small floating logo in lower-left while modal is open (for brand) */}

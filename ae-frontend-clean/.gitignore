@@ -16,3 +16,4 @@ renders
 coverage
 tsconfig.tsbuildinfo
 disabled-server
+.nv
