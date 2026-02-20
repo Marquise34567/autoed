@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Logo } from "@/components/Logo";
 
 export default function WaitlistModal({ open, onClose }: { open: boolean; onClose: (added?: boolean) => void }) {
   const [email, setEmail] = useState("");
@@ -10,9 +11,7 @@ export default function WaitlistModal({ open, onClose }: { open: boolean; onClos
 
   if (!open) return null;
 
-  const validate = (e: string) => {
-    return /\S+@\S+\.\S+/.test(e);
-  };
+  const validate = (e: string) => /\S+@\S+\.\S+/.test(e);
 
   const submit = async () => {
     setError(null);
@@ -32,7 +31,7 @@ export default function WaitlistModal({ open, onClose }: { open: boolean; onClos
         setEmail("");
         setTimeout(() => {
           onClose(true);
-        }, 1200);
+        }, 900);
       } else {
         setError("Failed to join waitlist. Try again later.");
       }
@@ -44,36 +43,43 @@ export default function WaitlistModal({ open, onClose }: { open: boolean; onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => onClose()} />
-      <div className="relative z-10 max-w-md w-full mx-4">
-        <div className="bg-[#0b0d12] border border-white/10 rounded-2xl p-6 shadow-2xl">
-          <h3 className="text-lg font-semibold">Join the waitlist</h3>
-          <p className="text-sm text-white/70 mt-1">Get notified when we launch premium access.</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-gradient-to-br from-black/80 to-black/70 backdrop-blur-lg" />
+      <div className="relative z-10 max-w-xl w-full mx-4">
+        <div className="bg-gradient-to-b from-white/6 to-white/4 border border-white/8 rounded-3xl p-8 shadow-[0_20px_60px_rgba(2,6,23,0.7)]">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-white/6 p-2">
+              <Logo />
+            </div>
+            <div>
+              <h3 className="text-2xl font-extrabold">AutoEditor is launching soon</h3>
+              <p className="text-sm text-white/70 mt-1">We're opening access in the coming weeks — join the waitlist to be notified.</p>
+            </div>
+          </div>
 
           {success ? (
-            <div className="mt-6 text-center text-green-400 font-medium">Thanks — you're on the list!</div>
+            <div className="mt-6 text-center text-green-400 font-medium">Thanks — you're on the list! We'll notify you soon.</div>
           ) : (
-            <div className="mt-4">
+            <div className="mt-6">
               <input
                 aria-label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white/90 placeholder:text-white/40"
+                className="w-full rounded-xl bg-black/30 border border-white/10 px-4 py-3 text-white placeholder:text-white/40"
               />
-              {error && <div className="mt-2 text-sm text-rose-400">{error}</div>}
+              {error && <div className="mt-3 text-sm text-rose-400">{error}</div>}
 
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-6 flex items-center gap-3">
                 <button
                   onClick={submit}
                   disabled={loading}
-                  className="rounded-full px-4 py-2 bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-60"
+                  className="flex-1 rounded-full px-5 py-3 bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold shadow-lg hover:scale-[1.01] transition-transform disabled:opacity-60"
                 >
-                  {loading ? "Joining..." : "Join Waitlist"}
+                  {loading ? "Joining..." : "Join Waitlist — Notify Me"}
                 </button>
-                <button onClick={() => onClose()} className="text-sm text-white/60 hover:text-white">Cancel</button>
               </div>
+              <p className="mt-3 text-xs text-white/60">We respect your privacy. We'll only use your email to notify you about AutoEditor.</p>
             </div>
           )}
         </div>

@@ -4,6 +4,7 @@ import { UserNav } from "@/components/UserNav"
 import { Logo } from "@/components/Logo"
 import { BetaBadge } from "@/components/BetaBadge"
 import { MobileNav } from "@/components/MobileNav"
+import WaitlistOverlay from '@/components/WaitlistOverlay'
 import { PLANS } from "@/config/plans"
 import { EDITOR_ROUTE, LOGIN_ROUTE } from '@/lib/routes'
 
@@ -168,6 +169,7 @@ export default function Home() {
           </div>
         </section>
       </main>
+      <WaitlistOverlay />
 
       <footer className="border-t border-white/10 px-6 py-10 text-sm text-white/60 lg:px-16">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
